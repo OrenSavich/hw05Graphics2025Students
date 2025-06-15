@@ -22,13 +22,38 @@ renderer.shadowMap.enabled = true;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // --- Lighting ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+// Remove old lights if present
+// Add realistic lighting: ambient, spotlights, and soft fill
+
+// Soft ambient light for base illumination
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-directionalLight.position.set(10, 20, 15);
-directionalLight.castShadow = true;
-scene.add(directionalLight);
+// Main stadium spotlights (simulate arena lights)
+const spotlights = [];
+const spotlightPositions = [
+  [0, 25, 0],    // Center
+  [-12, 22, 7], // Corners
+  [12, 22, 7],
+  [-12, 22, -7],
+  [12, 22, -7]
+];
+spotlightPositions.forEach(([x, y, z]) => {
+  const spot = new THREE.SpotLight(0xffffff, 1.1, 80, Math.PI / 5, 0.3, 1.5);
+  spot.position.set(x, y, z);
+  spot.castShadow = true;
+  spot.shadow.mapSize.width = 1024;
+  spot.shadow.mapSize.height = 1024;
+  spot.shadow.bias = -0.0005;
+  spot.target.position.set(0, 0, 0);
+  scene.add(spot);
+  scene.add(spot.target);
+  spotlights.push(spot);
+});
+
+// Soft fill light to reduce harsh shadows
+const fillLight = new THREE.HemisphereLight(0xffffff, 0x222233, 0.25);
+scene.add(fillLight);
 
 // --- Utility Functions ---
 /**
@@ -247,7 +272,8 @@ function createBasketballHoop(hoopX) {
  */
 function createBasketball() {
   const loader = new THREE.TextureLoader();
-  const geometry = new THREE.SphereGeometry(0.12, 64, 64);
+  // Increased radius from 0.12 to 0.2
+  const geometry = new THREE.SphereGeometry(0.2, 64, 64);
 
   // Fallback material in case texture fails
   const fallbackMaterial = new THREE.MeshPhongMaterial({ color: 0xff6600, shininess: 30 });
@@ -277,10 +303,88 @@ function createBasketball() {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.position.set(0, 0.25, 0);
+    // Raise the ball even higher above the court
+    mesh.position.set(0, 0.30, 0); // higher Y value for more clearance
     mesh.rotation.y = Math.PI / 4;
     scene.add(mesh);
   }
+}
+
+// =======================
+// Bleachers Construction
+// =======================
+
+/**
+ * Creates simple bleachers (audience seating) along the sides of the court.
+ */
+function createBleachers() {
+  const bleacherColor = 0x888888;
+  const stepDepth = 1.2;
+  const stepHeight = 0.4;
+  const stepWidth = 24;
+  const numSteps = 5;
+  const zOffset = 8.5; // Place outside the court (court is 15 wide)
+
+  // Left and right sides
+  [-1, 1].forEach(side => {
+    for (let i = 0; i < numSteps; i++) {
+      const geometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
+      const material = new THREE.MeshPhongMaterial({ color: bleacherColor });
+      const step = new THREE.Mesh(geometry, material);
+      step.position.set(0, (stepHeight / 2) + i * stepHeight, side * (zOffset + i * stepDepth));
+      step.castShadow = true;
+      step.receiveShadow = true;
+      scene.add(step);
+    }
+  });
+}
+
+// =======================
+// Scoreboard Construction
+// =======================
+
+/**
+ * Creates a simple NBA-style scoreboard above center court.
+ */
+function createScoreboard() {
+  // Main scoreboard body
+  const scoreboardGeometry = new THREE.BoxGeometry(4, 1.2, 2);
+  const scoreboardMaterial = new THREE.MeshPhongMaterial({ color: 0x222233 });
+  const scoreboard = new THREE.Mesh(scoreboardGeometry, scoreboardMaterial);
+  scoreboard.position.set(0, 7.5, 0);
+  scoreboard.castShadow = true;
+  scoreboard.receiveShadow = true;
+
+  // Create digital-style score textures for each side
+  const createScoreTexture = (label, score) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#222233';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = 'bold 36px monospace';
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, canvas.width / 2, 50);
+    ctx.font = 'bold 56px monospace';
+    ctx.fillStyle = '#FF3333';
+    ctx.fillText(score, canvas.width / 2, 110);
+    return new THREE.CanvasTexture(canvas);
+  };
+
+  // Four sides: front/back (Player A/B), left/right (Game Time)
+  const materials = [
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('PLAYER A', '00') }), // right
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('PLAYER B', '00') }), // left
+    new THREE.MeshBasicMaterial({ color: 0x222233 }), // top
+    new THREE.MeshBasicMaterial({ color: 0x222233 }), // bottom
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '12:00') }), // front
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '12:00') })  // back
+  ];
+  scoreboard.material = materials;
+
+  scene.add(scoreboard);
 }
 
 // =======================
@@ -291,6 +395,8 @@ createBasketballCourt();
 createBasketballHoop(-15);
 createBasketballHoop(15);
 createBasketball();
+createBleachers();
+createScoreboard();
 
 // --- Camera Setup ---
 camera.position.set(0, 15, 30);
@@ -311,19 +417,85 @@ instructionsElement.style.textAlign = 'left';
 instructionsElement.innerHTML = `
   <h3>Controls:</h3>
   <p>O - Toggle orbit camera</p>
+  <p>H - Toggle HUD</p>
 `;
 document.body.appendChild(instructionsElement);
 
-// --- Keyboard Controls ---
+// --- HUD Toggle ---
+// Get HUD elements
+const scoreDisplay = document.getElementById('score-display');
+const controlsDisplay = document.getElementById('controls-display');
+let hudVisible = true;
+
+// --- Free Camera Controls ---
+let isFreeCamera = false;
+let freeCamVelocity = new THREE.Vector3();
+let freeCamDirection = new THREE.Vector3();
+let freeCamSpeed = 0.4;
+let freeCamKeys = { w: false, a: false, s: false, d: false, q: false, e: false };
+let lastMouse = null;
+
+function enableFreeCamera() {
+  controls.enabled = false;
+  document.body.style.cursor = 'none';
+}
+function disableFreeCamera() {
+  controls.enabled = isOrbitEnabled;
+  document.body.style.cursor = '';
+}
+
+// --- Keyboard and Mouse Controls ---
 document.addEventListener('keydown', e => {
   if (e.key === "o") isOrbitEnabled = !isOrbitEnabled;
+  if (e.key === "h") {
+    hudVisible = !hudVisible;
+    if (scoreDisplay) scoreDisplay.style.display = hudVisible ? '' : 'none';
+    if (controlsDisplay) controlsDisplay.style.display = hudVisible ? '' : 'none';
+  }
+  if (e.key === "f") {
+    isFreeCamera = !isFreeCamera;
+    if (isFreeCamera) enableFreeCamera(); else disableFreeCamera();
+  }
+  if (isFreeCamera) {
+    if (e.key in freeCamKeys) freeCamKeys[e.key] = true;
+  }
 });
+document.addEventListener('keyup', e => {
+  if (isFreeCamera && (e.key in freeCamKeys)) freeCamKeys[e.key] = false;
+});
+document.addEventListener('mousemove', e => {
+  if (!isFreeCamera) return;
+  if (lastMouse) {
+    const dx = e.clientX - lastMouse.x;
+    const dy = e.clientY - lastMouse.y;
+    camera.rotation.y -= dx * 0.002;
+    camera.rotation.x -= dy * 0.002;
+    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+  }
+  lastMouse = { x: e.clientX, y: e.clientY };
+});
+document.addEventListener('mouseleave', () => { lastMouse = null; });
 
 // --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
-  controls.enabled = isOrbitEnabled;
-  controls.update();
+  if (isFreeCamera) {
+    // WASDQE movement
+    freeCamDirection.set(0,0,0);
+    if (freeCamKeys.w) freeCamDirection.z -= 1;
+    if (freeCamKeys.s) freeCamDirection.z += 1;
+    if (freeCamKeys.a) freeCamDirection.x -= 1;
+    if (freeCamKeys.d) freeCamDirection.x += 1;
+    if (freeCamKeys.q) freeCamDirection.y -= 1;
+    if (freeCamKeys.e) freeCamDirection.y += 1;
+    freeCamDirection.normalize();
+    // Move in camera's local space
+    const move = freeCamDirection.clone().applyEuler(camera.rotation).multiplyScalar(freeCamSpeed);
+    camera.position.add(move);
+  } else {
+    controls.enabled = isOrbitEnabled;
+    controls.update();
+  }
   renderer.render(scene, camera);
 }
 animate();
