@@ -19,9 +19,38 @@
 
 ## Additional Features
 
-- Modern, interactive 3D basketball court using Three.js
-- Orbit camera controls (toggle with 'O' key)
-- Responsive UI overlays for score and controls
+- **Modern, interactive 3D basketball court** using Three.js
+- **Orbit camera controls** (toggle with 'O' key)
+- **Free camera mode** (toggle with 'F' key) with WASD movement and arrow key rotation
+- **Responsive UI overlays** for score and controls
+- **HUD toggle** (press 'H' to show/hide interface elements)
+
+### Enhanced Visual Features
+
+- **Realistic wood grain texture** on court floor with procedural generation
+- **Professional team logos** at center court with custom basketball-themed design
+- **Improved basketball net** with more vertical strands, horizontal rings, and natural curve
+- **Enhanced backboard design** with orange borders and shooter's square matching real basketball courts
+- **Professional lighting system** with ambient, spotlight, and hemisphere lighting
+- **Detailed court markings** including three-point lines, key areas, free throw circles, and center court circle
+
+### Interactive Controls
+
+- **Camera Controls:**
+  - 'O' - Toggle orbit controls
+  - 'F' - Toggle free camera mode
+  - 'H' - Toggle HUD visibility
+  - WASD - Movement in free camera mode
+  - QE - Up/down movement in free camera mode
+  - Arrow keys - Camera rotation in free camera mode
+
+### Technical Enhancements
+
+- **Advanced materials** with proper shininess and specular properties
+- **Shadow mapping** for realistic lighting effects
+- **Texture mapping** with wood grain and custom logo textures
+- **Optimized geometry** for better performance
+- **Professional court dimensions** matching real basketball court specifications
 
 ## Known Issues or Limitations
 
