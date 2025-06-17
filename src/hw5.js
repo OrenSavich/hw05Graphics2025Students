@@ -485,8 +485,8 @@ function animate() {
     // Arrow keys: rotate camera view
     if (arrowKeys.ArrowLeft) camera.rotation.y += 0.03;
     if (arrowKeys.ArrowRight) camera.rotation.y -= 0.03;
-    if (arrowKeys.ArrowUp) camera.rotation.x -= 0.02;
-    if (arrowKeys.ArrowDown) camera.rotation.x += 0.02;
+    if (arrowKeys.ArrowUp) camera.rotation.x += 0.02; // Inverted: up arrow looks up
+    if (arrowKeys.ArrowDown) camera.rotation.x -= 0.02; // Inverted: down arrow looks down
     camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
   } else {
     controls.enabled = isOrbitEnabled;
