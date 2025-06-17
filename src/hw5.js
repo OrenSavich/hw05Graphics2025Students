@@ -70,13 +70,77 @@ function degreesToRadians(degrees) {
 // =======================
 
 /**
+ * Creates a realistic wood grain texture for the basketball court.
+ */
+function createWoodTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  
+  // Base wood color
+  ctx.fillStyle = '#D2691E';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Create wood grain lines
+  const numLines = 40;
+  for (let i = 0; i < numLines; i++) {
+    const y = (i / numLines) * canvas.height;
+    const opacity = 0.1 + Math.random() * 0.3;
+    const width = 1 + Math.random() * 3;
+    
+    // Vary the color slightly
+    const shade = Math.floor(180 + Math.random() * 40);
+    ctx.strokeStyle = `rgba(${shade}, ${Math.floor(shade * 0.6)}, ${Math.floor(shade * 0.3)}, ${opacity})`;
+    ctx.lineWidth = width;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    // Add some wave to the grain
+    for (let x = 0; x <= canvas.width; x += 10) {
+      const waveY = y + Math.sin(x * 0.02) * 2 + Math.random() * 1;
+      ctx.lineTo(x, waveY);
+    }
+    ctx.stroke();
+  }
+  
+  // Add some darker grain details
+  for (let i = 0; i < 15; i++) {
+    const y = Math.random() * canvas.height;
+    ctx.strokeStyle = `rgba(101, 67, 33, ${0.2 + Math.random() * 0.3})`;
+    ctx.lineWidth = 0.5 + Math.random() * 1.5;
+    
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= canvas.width; x += 8) {
+      const waveY = y + Math.sin(x * 0.03) * 3 + Math.random() * 2;
+      ctx.lineTo(x, waveY);
+    }
+    ctx.stroke();
+  }
+  
+  return new THREE.CanvasTexture(canvas);
+}
+
+/**
  * Creates the basketball court, including floor and lines.
  */
 function createBasketballCourt() {
-  // Court floor
+  // Create wood texture
+  const woodTexture = createWoodTexture();
+  woodTexture.wrapS = THREE.RepeatWrapping;
+  woodTexture.wrapT = THREE.RepeatWrapping;
+  woodTexture.repeat.set(8, 4); // Repeat to show more wood planks
+  
+  // Court floor with wood texture
   const court = new THREE.Mesh(
     new THREE.BoxGeometry(30, 0.2, 15),
-    new THREE.MeshPhongMaterial({ color: 0xc68642, shininess: 50 })
+    new THREE.MeshPhongMaterial({ 
+      map: woodTexture,
+      color: 0xc68642,
+      shininess: 80,
+      specular: 0x222222
+    })
   );
   court.receiveShadow = true;
   scene.add(court);
