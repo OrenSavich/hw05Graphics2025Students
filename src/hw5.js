@@ -155,8 +155,72 @@ function createBasketballCourt() {
   );
   centerLine.position.y = 0.11;
   scene.add(centerLine);
-
-  // Center circle (outline)
+/**
+ * Creates a team logo texture for the center court.
+ */
+function createTeamLogoTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  
+  // Clear background
+  ctx.fillStyle = 'transparent';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw team logo background circle
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 100;
+  
+  // Main logo circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#FF6600';
+  ctx.fill();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  
+  // Inner circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius * 0.8, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  
+  // Team name
+  ctx.fillStyle = '#FF6600';
+  ctx.font = 'bold 18px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('BASKETBALL', centerX, centerY - 10);
+  ctx.fillText('CHAMPIONS', centerX, centerY + 15);
+  
+  // Basketball icon in the center
+  ctx.beginPath();
+  ctx.arc(centerX, centerY + 35, 20, 0, Math.PI * 2);
+  ctx.fillStyle = '#FF6600';
+  ctx.fill();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Basketball lines
+  ctx.beginPath();
+  ctx.moveTo(centerX - 20, centerY + 35);
+  ctx.lineTo(centerX + 20, centerY + 35);
+  ctx.moveTo(centerX, centerY + 15);
+  ctx.lineTo(centerX, centerY + 55);
+  ctx.stroke();
+  
+  // Curved lines on basketball
+  ctx.beginPath();
+  ctx.arc(centerX, centerY + 35, 20, -Math.PI/2, Math.PI/2, false);
+  ctx.moveTo(centerX - 20, centerY + 35);
+  ctx.arc(centerX, centerY + 35, 20, Math.PI/2, 3*Math.PI/2, false);
+  ctx.stroke();
+  
+  return new THREE.CanvasTexture(canvas);
+}  // Center circle (outline)
   const centerCircle = new THREE.Mesh(
     new THREE.RingGeometry(2, 2.2, 32),
     lineMaterial
@@ -165,7 +229,7 @@ function createBasketballCourt() {
   centerCircle.position.y = 0.11;
   scene.add(centerCircle);
 
-  // Center circle (interior)
+  // Center circle (interior) - plain orange
   const centerCircleInterior = new THREE.Mesh(
     new THREE.CircleGeometry(2, 32),
     new THREE.MeshBasicMaterial({ color: 0xff6600 })
@@ -173,6 +237,19 @@ function createBasketballCourt() {
   centerCircleInterior.rotation.x = degreesToRadians(-90);
   centerCircleInterior.position.y = 0.105;
   scene.add(centerCircleInterior);
+  // Team logo on top of center line
+  const logoTexture = createTeamLogoTexture();
+  const centerLogo = new THREE.Mesh(
+    new THREE.CircleGeometry(1.5, 32),
+    new THREE.MeshBasicMaterial({ 
+      map: logoTexture,
+      transparent: true,
+      alphaTest: 0.1
+    })
+  );
+  centerLogo.rotation.x = degreesToRadians(-90);
+  centerLogo.position.set(0, 0.12, 0); // Positioned on top of the center line
+  scene.add(centerLogo);
 
   // Three-point lines (left & right)
   createThreePointArc(-15, lineMaterial, -90);
