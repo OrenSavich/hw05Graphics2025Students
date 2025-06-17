@@ -250,12 +250,31 @@ function createBasketballHoop(hoopX) {
   // Net
   const netGroup = new THREE.Group();
   const netMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-  for (let i = 0; i < 8; i++) {
-    const angle = (i / 8) * Math.PI * 2;
-    const top = new THREE.Vector3(Math.cos(angle) * 0.23, 0, Math.sin(angle) * 0.23);
-    const bottom = new THREE.Vector3(Math.cos(angle) * 0.15, -0.4, Math.sin(angle) * 0.15);
+  const netSegments = 16; // More vertical strands
+  const netHeight = 0.5;
+  const topRadius = 0.23;
+  const bottomRadius = 0.13;
+  // Vertical strands
+  for (let i = 0; i < netSegments; i++) {
+    const angle = (i / netSegments) * Math.PI * 2;
+    const top = new THREE.Vector3(Math.cos(angle) * topRadius, 0, Math.sin(angle) * topRadius);
+    // Curve the net slightly inward at the bottom
+    const bottom = new THREE.Vector3(Math.cos(angle) * bottomRadius, -netHeight, Math.sin(angle) * bottomRadius);
     const geometry = new THREE.BufferGeometry().setFromPoints([top, bottom]);
     netGroup.add(new THREE.Line(geometry, netMaterial));
+  }
+  // Horizontal rings (simulate net structure)
+  const ringCount = 4;
+  for (let j = 1; j <= ringCount; j++) {
+    const ringRadius = topRadius - (topRadius - bottomRadius) * (j / ringCount);
+    const ringY = -netHeight * (j / ringCount);
+    const ringPoints = [];
+    for (let i = 0; i <= netSegments; i++) {
+      const angle = (i / netSegments) * Math.PI * 2;
+      ringPoints.push(new THREE.Vector3(Math.cos(angle) * ringRadius, ringY, Math.sin(angle) * ringRadius));
+    }
+    const ringGeometry = new THREE.BufferGeometry().setFromPoints(ringPoints);
+    netGroup.add(new THREE.Line(ringGeometry, netMaterial));
   }
   netGroup.position.set(hoopX + (hoopX < 0 ? 1.3 : -1.3), 4.5, 0);
   group.add(netGroup);
