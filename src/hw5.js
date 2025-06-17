@@ -405,22 +405,6 @@ camera.position.set(0, 15, 30);
 const controls = new OrbitControls(camera, renderer.domElement);
 let isOrbitEnabled = true;
 
-// --- Instructions Overlay ---
-const instructionsElement = document.createElement('div');
-instructionsElement.style.position = 'absolute';
-instructionsElement.style.bottom = '20px';
-instructionsElement.style.left = '20px';
-instructionsElement.style.color = 'white';
-instructionsElement.style.fontSize = '16px';
-instructionsElement.style.fontFamily = 'Arial, sans-serif';
-instructionsElement.style.textAlign = 'left';
-instructionsElement.innerHTML = `
-  <h3>Controls:</h3>
-  <p>O - Toggle orbit camera</p>
-  <p>H - Toggle HUD</p>
-`;
-document.body.appendChild(instructionsElement);
-
 // --- HUD Toggle ---
 // Get HUD elements
 const scoreDisplay = document.getElementById('score-display');
@@ -433,6 +417,7 @@ let freeCamVelocity = new THREE.Vector3();
 let freeCamDirection = new THREE.Vector3();
 let freeCamSpeed = 0.4;
 let freeCamKeys = { w: false, a: false, s: false, d: false, q: false, e: false };
+let arrowKeys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
 let lastMouse = null;
 
 function enableFreeCamera() {
@@ -458,21 +443,26 @@ document.addEventListener('keydown', e => {
   }
   if (isFreeCamera) {
     if (e.key in freeCamKeys) freeCamKeys[e.key] = true;
+    if (e.key in arrowKeys) arrowKeys[e.key] = true;
   }
 });
 document.addEventListener('keyup', e => {
   if (isFreeCamera && (e.key in freeCamKeys)) freeCamKeys[e.key] = false;
+  if (isFreeCamera && (e.key in arrowKeys)) arrowKeys[e.key] = false;
 });
 document.addEventListener('mousemove', e => {
-  if (!isFreeCamera) return;
-  if (lastMouse) {
-    const dx = e.clientX - lastMouse.x;
-    const dy = e.clientY - lastMouse.y;
-    camera.rotation.y -= dx * 0.002;
-    camera.rotation.x -= dy * 0.002;
-    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+  // Only allow mouse look if not in free camera mode
+  // (No-op in free camera mode)
+  if (!isFreeCamera) {
+    if (lastMouse) {
+      const dx = e.clientX - lastMouse.x;
+      const dy = e.clientY - lastMouse.y;
+      camera.rotation.y -= dx * 0.002;
+      camera.rotation.x -= dy * 0.002;
+      camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+    }
+    lastMouse = { x: e.clientX, y: e.clientY };
   }
-  lastMouse = { x: e.clientX, y: e.clientY };
 });
 document.addEventListener('mouseleave', () => { lastMouse = null; });
 
@@ -492,6 +482,12 @@ function animate() {
     // Move in camera's local space
     const move = freeCamDirection.clone().applyEuler(camera.rotation).multiplyScalar(freeCamSpeed);
     camera.position.add(move);
+    // Arrow keys: rotate camera view
+    if (arrowKeys.ArrowLeft) camera.rotation.y += 0.03;
+    if (arrowKeys.ArrowRight) camera.rotation.y -= 0.03;
+    if (arrowKeys.ArrowUp) camera.rotation.x -= 0.02;
+    if (arrowKeys.ArrowDown) camera.rotation.x += 0.02;
+    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
   } else {
     controls.enabled = isOrbitEnabled;
     controls.update();
