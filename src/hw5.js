@@ -236,15 +236,14 @@ function createBasketballHoop(hoopX) {
   backboard.castShadow = true;
   backboard.receiveShadow = true;
   group.add(backboard);
-
-  // Backboard border (black)
+  // Backboard border (orange)
   const borderThickness = 0.08;
   const borderLengthX = 2.8 + borderThickness;
   const borderLengthY = 1.6 + borderThickness;
   // Top border
   const borderTop = new THREE.Mesh(
     new THREE.BoxGeometry(borderLengthX, borderThickness, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+    new THREE.MeshBasicMaterial({ color: 0xff6600 })
   );
   borderTop.position.set(
     0,
@@ -253,11 +252,10 @@ function createBasketballHoop(hoopX) {
   );
   // Bottom border
   const borderBottom = borderTop.clone();
-  borderBottom.position.y = -(1.6 / 2);
-  // Left border
+  borderBottom.position.y = -(1.6 / 2);  // Left border
   const borderLeft = new THREE.Mesh(
     new THREE.BoxGeometry(borderThickness, borderLengthY, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+    new THREE.MeshBasicMaterial({ color: 0xff6600 })
   );
   borderLeft.position.set(
     -(2.8 / 2),
@@ -267,15 +265,14 @@ function createBasketballHoop(hoopX) {
   // Right border
   const borderRight = borderLeft.clone();
   borderRight.position.x = (2.8 / 2);
-
-  // Shooter's square (black)
+  // Shooter's square (orange)
   const squareWidth = 0.6;
   const squareHeight = 0.45;
   const squareThickness = 0.05; // Increased thickness for the shooter's square
   // Top of square
   const squareTop = new THREE.Mesh(
     new THREE.BoxGeometry(squareWidth, squareThickness, 0.13),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+    new THREE.MeshBasicMaterial({ color: 0xff6600 })
   );
   squareTop.position.set(
     0,
@@ -284,11 +281,10 @@ function createBasketballHoop(hoopX) {
   );
   // Bottom of square
   const squareBottom = squareTop.clone();
-  squareBottom.position.y = -(squareHeight / 2);
-  // Left of square
+  squareBottom.position.y = -(squareHeight / 2);  // Left of square
   const squareLeft = new THREE.Mesh(
     new THREE.BoxGeometry(squareThickness, squareHeight, 0.13),
-    new THREE.MeshBasicMaterial({ color: 0x000000 })
+    new THREE.MeshBasicMaterial({ color: 0xff6600 })
   );
   squareLeft.position.set(
     -(squareWidth / 2),
@@ -299,7 +295,7 @@ function createBasketballHoop(hoopX) {
   const squareRight = squareLeft.clone();
   squareRight.position.x = (squareWidth / 2);
 
-  // Group all black parts for easier rotation/positioning
+  // Group all orange parts for easier rotation/positioning
   const boardDeco = new THREE.Group();
   boardDeco.add(borderTop, borderBottom, borderLeft, borderRight, squareTop, squareBottom, squareLeft, squareRight);
   // Rotate the group 90 degrees around Y to match the backboard
