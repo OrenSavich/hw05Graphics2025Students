@@ -38,8 +38,9 @@
 
 - **Camera Controls:**
   - 'O' - Toggle orbit controls
-  - 'F' - Toggle free camera mode
   - 'H' - Toggle HUD visibility
+  - 'F' - Toggle free camera mode
+- **Free Camera Mode:**
   - WASD - Movement in free camera mode
   - QE - Up/down movement in free camera mode
   - Arrow keys - Camera rotation in free camera mode
@@ -72,15 +73,19 @@ All detailed instructions, requirements, and specifications can be found in:
 ## Screenshots
 
 ### Overall view of the basketball court with hoops
+
 ![Overall view of the basketball court with hoops](screenshots/Overall%20view%20of%20the%20basketball%20court%20with%20hoops.png)
 
 ### Close-up view of basketball hoops with nets
+
 ![Close-up view of basketball hoops with nets](screenshots/Close-up%20view%20of%20basketball%20hoops%20with%20nets.png)
 
 ### View showing the basketball positioned at center court
+
 ![View showing the basketball positioned at center court](screenshots/View%20showing%20the%20basketball%20positioned%20at%20center%20court.png)
 
 ### View demonstrating camera controls functionality
+
 ![View demonstrating camera controls functionality](screenshots/View%20demonstrating%20camera%20controls%20functionality.png)
 
 ---
