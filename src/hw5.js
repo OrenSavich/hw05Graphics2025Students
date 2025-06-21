@@ -365,12 +365,14 @@ function createBasketballHoop(hoopX) {
   arm.position.set(hoopX + (hoopX < 0 ? 0.5 : -0.5), 5, 0);
   arm.rotation.y = degreesToRadians(hoopX < 0 ? 90 : -90);
   arm.castShadow = true;
-  group.add(arm);
-
-  // Backboard (white base)
+  group.add(arm);  // Backboard (white base)
   const backboard = new THREE.Mesh(
     new THREE.BoxGeometry(2.8, 1.6, 0.1),
-    new THREE.MeshPhongMaterial({ color: 0xffffff })
+    new THREE.MeshPhongMaterial({ 
+      color: 0xffffff, 
+      transparent: true, 
+      opacity: 0.6 
+    })
   );
   backboard.position.set(hoopX + (hoopX < 0 ? 1 : -1), 5, 0);
   backboard.rotation.y = degreesToRadians(hoopX < 0 ? 90 : -90);
