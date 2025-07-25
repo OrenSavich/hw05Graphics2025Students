@@ -703,6 +703,108 @@ const scoreDisplay = document.getElementById('score-display');
 const controlsDisplay = document.getElementById('controls-display');
 let hudVisible = true;
 
+// Controls visibility management
+let controlsVisible = true;
+
+function hideControls() {
+  controlsVisible = false;
+  if (controlsDisplay) controlsDisplay.style.display = 'none';
+  const reopenButton = document.getElementById('reopen-controls');
+  if (reopenButton) {
+    reopenButton.style.display = 'block';
+    reopenButton.style.visibility = 'visible';
+    reopenButton.style.opacity = '1';
+  }
+}
+
+function showControls() {
+  controlsVisible = true;
+  if (controlsDisplay) controlsDisplay.style.display = 'block';
+  const reopenButton = document.getElementById('reopen-controls');
+  if (reopenButton) {
+    reopenButton.style.display = 'none';
+    reopenButton.style.visibility = 'hidden';
+    reopenButton.style.opacity = '0';
+  }
+}
+
+// Initialize controls after DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  setupControlEventListeners();
+});
+
+// Also try to add listeners immediately (fallback)
+setTimeout(() => {
+  setupControlEventListeners();
+}, 100);
+
+// Enhanced event handling with more debugging
+document.addEventListener('click', (event) => {
+  if (event.target.id === 'close-controls') {
+    event.preventDefault();
+    event.stopPropagation();
+    hideControls();
+  } else if (event.target.id === 'reopen-controls') {
+    event.preventDefault();
+    event.stopPropagation();
+    showControls();
+  }
+});
+
+// Add a specific click listener to the reopen button area
+document.addEventListener('click', (event) => {
+  // Check if we're clicking near where the reopen button should be
+  if (event.clientX < 200 && event.clientY > window.innerHeight - 100) {
+    const reopenButton = document.getElementById('reopen-controls');
+    if (reopenButton && reopenButton.style.display !== 'none') {
+      showControls();
+    }
+  }
+});
+
+function setupControlEventListeners() {
+  const closeControlsButton = document.getElementById('close-controls');
+  const reopenControlsButton = document.getElementById('reopen-controls');
+  
+  if (closeControlsButton) {
+    // Remove any existing listeners
+    closeControlsButton.onclick = null;
+    closeControlsButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideControls();
+    });
+  }
+  
+  if (reopenControlsButton) {
+    // Remove any existing listeners and try multiple approaches
+    reopenControlsButton.onclick = null;
+    
+    // Method 1: Standard event listener
+    reopenControlsButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showControls();
+    });
+    
+    // Method 2: onclick property as backup
+    reopenControlsButton.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showControls();
+    };
+    
+    // Method 3: Mouse events for debugging
+    reopenControlsButton.addEventListener('mousedown', (e) => {
+      // Mouse event detected
+    });
+    
+    reopenControlsButton.addEventListener('mouseup', (e) => {
+      // Mouse event detected
+    });
+  }
+}
+
 // --- Free Camera Controls ---
 let isFreeCamera = false;
 let freeCamVelocity = new THREE.Vector3();
@@ -727,7 +829,14 @@ document.addEventListener('keydown', e => {
   if (e.key === "h") {
     hudVisible = !hudVisible;
     if (scoreDisplay) scoreDisplay.style.display = hudVisible ? '' : 'none';
-    if (controlsDisplay) controlsDisplay.style.display = hudVisible ? '' : 'none';
+    // Only show/hide controls if they're supposed to be visible
+    if (hudVisible && controlsVisible) {
+      showControls();
+    } else if (!hudVisible) {
+      if (controlsDisplay) controlsDisplay.style.display = 'none';
+      const reopenButton = document.getElementById('reopen-controls');
+      if (reopenButton) reopenButton.style.display = 'none';
+    }
   }
   if (e.key === "f") {
     isFreeCamera = !isFreeCamera;

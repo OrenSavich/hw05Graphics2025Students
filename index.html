@@ -74,11 +74,13 @@
         }
         /* Controls Display - Bottom Left */
         #controls-display {
+            position: absolute;
             bottom: 20px;
             left: 20px;
             min-width: 250px;
             max-height: 80vh;
             overflow-y: auto;
+            z-index: 101;
         }
         #controls-display h3 {
             color: #ff6600;
@@ -117,6 +119,62 @@
             color: #666;
         }
         .control-disabled .control-description { color: #666; }
+        
+        /* Close button for controls */
+        .close-button {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            background: rgba(255, 102, 0, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        .close-button:hover {
+            background: rgba(255, 102, 0, 1);
+        }
+        
+        /* Reopen controls button */
+        #reopen-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 102, 0, 0.9);
+            border: 2px solid rgba(255, 165, 0, 0.8);
+            border-radius: 8px;
+            padding: 10px 15px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none; /* Remove !important to allow JavaScript control */
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+            z-index: 1000;
+            pointer-events: auto;
+            user-select: none;
+            min-width: 120px;
+            text-align: center;
+        }
+        #reopen-controls:hover {
+            background: rgba(255, 102, 0, 1);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255, 102, 0, 0.4);
+        }
+        #reopen-controls:active {
+            transform: scale(0.95);
+            background: rgba(200, 80, 0, 1);
+        }
+        
         /* Responsive Design */
         @media (max-width: 768px) {
             .ui-panel { padding: 10px; font-size: 12px; }
@@ -159,6 +217,7 @@
 
     <!-- Controls Display (Bottom Left) -->
     <div id="controls-display" class="ui-overlay ui-panel">
+        <button class="close-button" id="close-controls" title="Close controls">×</button>
         <h3>🎮 Controls</h3>
         <!-- Camera Controls Section -->
         <div class="control-section">
@@ -232,6 +291,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Reopen Controls Button (Hidden by default) -->
+    <button id="reopen-controls" class="ui-overlay">
+        🎮 Show Controls
+    </button>
 
     <!-- ========================= -->
     <!-- App JavaScript            -->
