@@ -1192,79 +1192,78 @@ function showScorePopup(text, type) {
  * Updates the score display UI (Phase 7: Enhanced)
  */
 function updateScoreDisplay() {
+  // Update center title and score
+  const centerScoreDisplay = document.getElementById('center-score-display');
+  if (centerScoreDisplay) {
+    centerScoreDisplay.innerHTML = `
+      <h2 style="margin: 0 0 10px 0; color: #FFD700; font-size: 18px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+        🏀 Basketball Simulator 🏀
+      </h2>
+      <div style="text-align: center;">
+        <div style="font-size: 32px; font-weight: bold; color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">
+          ${basketballScoring.totalScore}
+        </div>
+        <div style="font-size: 12px; color: #AAA; margin-top: 4px;">TOTAL POINTS</div>
+      </div>
+    `;
+  }
+
+  // Update detailed statistics display
   const scoreDisplay = document.getElementById('score-display');
   if (!scoreDisplay) return;
   
   const accuracy = basketballScoring.shotsAttempted > 0 ? 
                   Math.round((basketballScoring.shotsMade / basketballScoring.shotsAttempted) * 100) : 0;
   
-  // Compact score display with smaller layout
+  // Detailed statistics display
   scoreDisplay.innerHTML = `
-    <h2 style="margin: 0 0 10px 0; color: #FFD700; text-align: center; font-size: 16px;">
-      🏀 Basketball Simulator 🏀
-    </h2>
+    <!-- Statistics Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 8px;">
+      
+      <!-- Shooting Stats -->
+      <div style="background: rgba(255,215,0,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(255,215,0,0.3);">
+        <div style="font-weight: bold; color: #FFD700; margin-bottom: 4px; font-size: 9px;">📊 SHOOTING</div>
+        <div style="font-size: 10px;"><strong>Made:</strong> ${basketballScoring.shotsMade}</div>
+        <div style="font-size: 10px;"><strong>Attempts:</strong> ${basketballScoring.shotsAttempted}</div>
+        <div style="color: ${accuracy >= 50 ? '#4CAF50' : accuracy >= 30 ? '#FF9800' : '#f44336'}; font-size: 10px;">
+          <strong>Accuracy:</strong> ${accuracy}%
+        </div>
+      </div>
+      
+      <!-- Streak Stats -->
+      <div style="background: rgba(76,175,80,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(76,175,80,0.3);">
+        <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px; font-size: 9px;">🔥 STREAKS</div>
+        <div style="font-size: 10px;"><strong>Current:</strong> ${basketballScoring.currentStreak}</div>
+        <div style="font-size: 10px;"><strong>Best:</strong> ${basketballScoring.bestStreak}</div>
+        <div style="color: ${basketballScoring.consecutiveMisses > 2 ? '#f44336' : '#AAA'}; font-size: 10px;">
+          <strong>Misses:</strong> ${basketballScoring.consecutiveMisses}
+        </div>
+      </div>
+      
+      <!-- Shot Analysis -->
+      <div style="background: rgba(33,150,243,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(33,150,243,0.3);">
+        <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px; font-size: 9px;">🎯 ANALYSIS</div>
+        ${basketballScoring.lastShotResult ? 
+          `<div style="color: ${basketballScoring.lastShotResult === 'made' ? '#4CAF50' : '#f44336'}; font-size: 10px;">
+            <strong>Last:</strong> ${basketballScoring.lastShotResult.toUpperCase()}
+          </div>` : '<div style="font-size: 10px;"><strong>Last:</strong> ---</div>'}
+        ${basketballScoring.lastShotDistance > 0 ? 
+          `<div style="font-size: 10px;"><strong>Distance:</strong> ${basketballScoring.lastShotDistance.toFixed(1)}m</div>` : 
+          '<div style="font-size: 10px;"><strong>Distance:</strong> ---</div>'}
+        <div style="color: #AAA; font-size: 9px;">
+          ${basketballScoring.lastShotDistance > basketballScoring.twoPointZone ? '3-Point Zone' : '2-Point Zone'}
+        </div>
+      </div>
+    </div>
     
-    <!-- Main Score Section -->
-    <div style="background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(30,30,30,0.9)); 
-                padding: 12px; border-radius: 10px; color: white; font-family: 'Arial', sans-serif;
-                border: 2px solid #FFD700; box-shadow: 0 2px 10px rgba(255,215,0,0.2);">
-      
-      <!-- Total Score Display -->
-      <div style="text-align: center; margin-bottom: 12px;">
-        <div style="font-size: 24px; font-weight: bold; color: #FFD700; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-          ${basketballScoring.totalScore}
-        </div>
-        <div style="font-size: 10px; color: #AAA; margin-top: 2px;">TOTAL POINTS</div>
-      </div>
-      
-      <!-- Statistics Grid -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 8px;">
-        
-        <!-- Shooting Stats -->
-        <div style="background: rgba(255,215,0,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(255,215,0,0.3);">
-          <div style="font-weight: bold; color: #FFD700; margin-bottom: 4px; font-size: 9px;">📊 SHOOTING</div>
-          <div style="font-size: 10px;"><strong>Made:</strong> ${basketballScoring.shotsMade}</div>
-          <div style="font-size: 10px;"><strong>Attempts:</strong> ${basketballScoring.shotsAttempted}</div>
-          <div style="color: ${accuracy >= 50 ? '#4CAF50' : accuracy >= 30 ? '#FF9800' : '#f44336'}; font-size: 10px;">
-            <strong>Accuracy:</strong> ${accuracy}%
-          </div>
-        </div>
-        
-        <!-- Streak Stats -->
-        <div style="background: rgba(76,175,80,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(76,175,80,0.3);">
-          <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px; font-size: 9px;">🔥 STREAKS</div>
-          <div style="font-size: 10px;"><strong>Current:</strong> ${basketballScoring.currentStreak}</div>
-          <div style="font-size: 10px;"><strong>Best:</strong> ${basketballScoring.bestStreak}</div>
-          <div style="color: ${basketballScoring.consecutiveMisses > 2 ? '#f44336' : '#AAA'}; font-size: 10px;">
-            <strong>Misses:</strong> ${basketballScoring.consecutiveMisses}
-          </div>
-        </div>
-        
-        <!-- Shot Analysis -->
-        <div style="background: rgba(33,150,243,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(33,150,243,0.3);">
-          <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px; font-size: 9px;">🎯 ANALYSIS</div>
-          ${basketballScoring.lastShotResult ? 
-            `<div style="color: ${basketballScoring.lastShotResult === 'made' ? '#4CAF50' : '#f44336'}; font-size: 10px;">
-              <strong>Last:</strong> ${basketballScoring.lastShotResult.toUpperCase()}
-            </div>` : '<div style="font-size: 10px;"><strong>Last:</strong> ---</div>'}
-          ${basketballScoring.lastShotDistance > 0 ? 
-            `<div style="font-size: 10px;"><strong>Distance:</strong> ${basketballScoring.lastShotDistance.toFixed(1)}m</div>` : 
-            '<div style="font-size: 10px;"><strong>Distance:</strong> ---</div>'}
-          <div style="color: #AAA; font-size: 9px;">
-            ${basketballScoring.lastShotDistance > basketballScoring.twoPointZone ? '3-Point Zone' : '2-Point Zone'}
-          </div>
-        </div>
-      </div>
-      
-      <!-- Performance Indicators -->
-      <div style="border-top: 1px solid rgba(255,215,0,0.3); padding-top: 6px;">
-        <div style="display: flex; justify-content: center; align-items: center; font-size: 9px;">
-          <div style="color: #AAA;">
-            Performance: 
-            <span style="color: ${accuracy >= 70 ? '#4CAF50' : accuracy >= 50 ? '#FF9800' : accuracy >= 30 ? '#FFC107' : '#f44336'};">
-              ${accuracy >= 70 ? 'EXCELLENT' : accuracy >= 50 ? 'GOOD' : accuracy >= 30 ? 'AVERAGE' : 'NEEDS PRACTICE'}
-            </span>
-          </div>
+    <!-- Performance Indicators -->
+    <div style="border-top: 1px solid rgba(255,215,0,0.3); padding-top: 6px;">
+      <div style="display: flex; justify-content: center; align-items: center; font-size: 9px;">
+        <div style="color: #AAA;">
+          Performance: 
+          <span style="color: ${accuracy >= 70 ? '#4CAF50' : accuracy >= 50 ? '#FF9800' : accuracy >= 30 ? '#FFC107' : '#f44336'};">
+            ${accuracy >= 70 ? 'EXCELLENT' : accuracy >= 50 ? 'GOOD' : accuracy >= 30 ? 'AVERAGE' : 'NEEDS PRACTICE'}
+          </span>
         </div>
       </div>
     </div>
@@ -1877,11 +1876,12 @@ function updateBasketballMovement() {
 }
 
 /**
- * Manually resets basketball to center court and stops all physics (Phase 1 & 6)
+ * Manually resets basketball to center court and stops all physics AND resets camera position (Phase 1 & 6)
  */
 function resetBasketball() {
   if (!basketball) return;
   
+  // Reset basketball position and physics
   basketball.position.set(0, basketballPhysics.groundY, 0);
   basketballPhysics.velocity.set(0, 0, 0);
   basketballPhysics.rotationSpeed.set(0, 0, 0);
@@ -1889,6 +1889,13 @@ function resetBasketball() {
   basketballPhysics.startTime = null;
   basketballShot.power = 0;
   updatePowerIndicator();
+  
+  // Reset camera position to initial position
+  camera.position.set(0, 10, 20);
+  
+  // Reset orbit controls target to look at center court (where ball is)
+  controls.target.set(0, 0, 0);
+  controls.update();
   
   // Phase 6: Stop tracking any current shot
   basketballScoring.isTrackingShot = false;
@@ -2076,6 +2083,8 @@ document.addEventListener('keydown', e => {
   if (e.key === "h") {
     hudVisible = !hudVisible;
     if (scoreDisplay) scoreDisplay.style.display = hudVisible ? '' : 'none';
+    const centerScoreDisplay = document.getElementById('center-score-display');
+    if (centerScoreDisplay) centerScoreDisplay.style.display = hudVisible ? '' : 'none';
     // Only show/hide controls if they're supposed to be visible
     if (hudVisible && controlsVisible) {
       showControls();

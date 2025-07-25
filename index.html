@@ -42,7 +42,15 @@
             line-height: 1.3;
             pointer-events: auto;
         }
-        /* Score Display - Top Right */
+        /* Center Title and Score Display - Top Center */
+        #center-score-display {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            min-width: 200px;
+        }
+        /* Statistics Display - Top Right */
         #score-display {
             top: 20px;
             right: 20px;
@@ -260,7 +268,16 @@
     <!-- ========================= -->
     <!-- UI Overlay System         -->
     <!-- ========================= -->
-    <!-- Score Display (Top Center) -->
+    <!-- Center Title and Score Display (Top Center) -->
+    <div id="center-score-display" class="ui-overlay ui-panel">
+        <h2>🏀 Basketball Simulator 🏀</h2>
+        <div class="main-score">
+            <div>0</div>
+            <div style="font-size: 10px; color: #AAA; margin-top: 2px;">TOTAL POINTS</div>
+        </div>
+    </div>
+
+    <!-- Statistics Display (Top Right) -->
     <div id="score-display" class="ui-overlay ui-panel">
         <h2>🏀 Oren's & Rotem's Basketball Court 🏀</h2>
         <div class="score-board">
