@@ -651,22 +651,40 @@ const basketballShot = {
   }
 };
 
-// Basketball physics system (HW6 Phase 3)
+// Basketball physics system (HW6 Phase 3 & 4)
 const basketballPhysics = {
   isFlying: false,
   velocity: new THREE.Vector3(0, 0, 0),
   gravity: -9.81 * 2, // Accelerated gravity for game feel
   groundY: 0.30, // Ball rest height on court
-  bounceDecay: 0.6, // Energy loss on bounce
-  minBounceVelocity: 0.5, // Minimum velocity to continue bouncing
-  airResistance: 0.98, // Air resistance factor
-  rotationSpeed: new THREE.Vector3(0, 0, 0)
+  bounceDecay: 0.7, // Energy loss on ground bounce (improved)
+  rimBounceDecay: 0.5, // Energy loss on rim bounce (more realistic)
+  backboardBounceDecay: 0.4, // Energy loss on backboard bounce
+  minBounceVelocity: 0.3, // Minimum velocity to continue bouncing (lowered)
+  airResistance: 0.99, // Air resistance factor (reduced drag)
+  rotationSpeed: new THREE.Vector3(0, 0, 0),
+  ballRadius: 0.2, // Basketball radius for collision detection
+  startTime: null // Track when physics started for timeout prevention
 };
 
-// Hoop positions for shot targeting
+// Hoop positions for shot targeting and collision detection (HW6 Phase 4)
 const hoopPositions = [
-  { x: -14, y: 4.5, z: 0 }, // Left hoop
-  { x: 14, y: 4.5, z: 0 }   // Right hoop
+  { 
+    x: -14, y: 4.5, z: 0, // Left hoop (targeting position)
+    rimCenter: { x: -13.7, y: 4.5, z: 0 }, // Actual rim position (-15 + 1.3)
+    rimRadius: 0.23,
+    backboardCenter: { x: -14, y: 5, z: 0 }, // Actual backboard position (-15 + 1)
+    backboardWidth: 2.8,
+    backboardHeight: 1.6
+  },
+  { 
+    x: 14, y: 4.5, z: 0, // Right hoop (targeting position)  
+    rimCenter: { x: 13.7, y: 4.5, z: 0 }, // Actual rim position (15 - 1.3)
+    rimRadius: 0.23,
+    backboardCenter: { x: 14, y: 5, z: 0 }, // Actual backboard position (15 - 1)
+    backboardWidth: 2.8,
+    backboardHeight: 1.6
+  }
 ];
 
 /**
@@ -689,6 +707,90 @@ function getNearestHoop() {
   }
   
   return nearestHoop;
+}
+
+/**
+ * Checks collision with rim (Phase 4)
+ */
+function checkRimCollision() {
+  if (!basketball || !basketballPhysics.isFlying) return false;
+  
+  const ballPos = basketball.position;
+  
+  for (const hoop of hoopPositions) {
+    const rimCenter = new THREE.Vector3(hoop.rimCenter.x, hoop.rimCenter.y, hoop.rimCenter.z);
+    const distanceToRim = ballPos.distanceTo(rimCenter);
+    
+    // Check if ball is close enough to rim
+    if (distanceToRim < (hoop.rimRadius + basketballPhysics.ballRadius)) {
+      // Check if ball is at approximately rim height
+      if (Math.abs(ballPos.y - hoop.rimCenter.y) < basketballPhysics.ballRadius) {
+        // Calculate bounce direction
+        const bounceDirection = ballPos.clone().sub(rimCenter).normalize();
+        
+        // Apply rim bounce with energy loss
+        const currentSpeed = basketballPhysics.velocity.length();
+        basketballPhysics.velocity = bounceDirection.multiplyScalar(currentSpeed * basketballPhysics.rimBounceDecay);
+        
+        // Add some randomness for realistic rim bounces
+        basketballPhysics.velocity.add(new THREE.Vector3(
+          (Math.random() - 0.5) * 2,
+          Math.random() * 3,
+          (Math.random() - 0.5) * 2
+        ));
+        
+        // Update rotation
+        basketballPhysics.rotationSpeed.multiplyScalar(0.8);
+        
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Checks collision with backboard (Phase 4)
+ */
+function checkBackboardCollision() {
+  if (!basketball || !basketballPhysics.isFlying) return false;
+  
+  const ballPos = basketball.position;
+  
+  for (const hoop of hoopPositions) {
+    const backboardCenter = hoop.backboardCenter;
+    
+    // Check if ball is close to backboard plane
+    const distanceToBackboard = Math.abs(ballPos.x - backboardCenter.x);
+    
+    if (distanceToBackboard < basketballPhysics.ballRadius) {
+      // Check if ball is within backboard bounds
+      const withinHeight = Math.abs(ballPos.y - backboardCenter.y) < (hoop.backboardHeight / 2);
+      const withinWidth = Math.abs(ballPos.z - backboardCenter.z) < (hoop.backboardWidth / 2);
+      
+      if (withinHeight && withinWidth) {
+        // Reverse X velocity for backboard bounce
+        basketballPhysics.velocity.x = -basketballPhysics.velocity.x * basketballPhysics.backboardBounceDecay;
+        basketballPhysics.velocity.y *= basketballPhysics.backboardBounceDecay;
+        basketballPhysics.velocity.z *= basketballPhysics.backboardBounceDecay;
+        
+        // Position ball slightly away from backboard
+        if (ballPos.x > backboardCenter.x) {
+          ballPos.x = backboardCenter.x + basketballPhysics.ballRadius + 0.01;
+        } else {
+          ballPos.x = backboardCenter.x - basketballPhysics.ballRadius - 0.01;
+        }
+        
+        // Update rotation
+        basketballPhysics.rotationSpeed.multiplyScalar(0.9);
+        
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 /**
@@ -739,14 +841,21 @@ function shootBasketball() {
     basketballPhysics.velocity.x * 0.1
   );
   
+  // Initialize physics state properly
   basketballPhysics.isFlying = true;
+  basketballPhysics.startTime = performance.now(); // Track when physics started
 }
 
 /**
- * Updates basketball physics during flight
+ * Updates basketball physics during flight (Phase 3 & 4)
  */
 function updateBasketballPhysics(deltaTime) {
   if (!basketball || !basketballPhysics.isFlying) return;
+  
+  // Check rim and backboard collisions first (Phase 4)
+  if (checkRimCollision() || checkBackboardCollision()) {
+    // Collision occurred, continue with updated velocity
+  }
   
   // Apply gravity
   basketballPhysics.velocity.y += basketballPhysics.gravity * deltaTime;
@@ -763,7 +872,7 @@ function updateBasketballPhysics(deltaTime) {
   basketball.rotation.y += basketballPhysics.rotationSpeed.y;
   basketball.rotation.z += basketballPhysics.rotationSpeed.z;
   
-  // Check for ground collision
+  // Ground collision detection (Phase 4 - improved)
   if (basketball.position.y <= basketballPhysics.groundY) {
     basketball.position.y = basketballPhysics.groundY;
     
@@ -774,31 +883,68 @@ function updateBasketballPhysics(deltaTime) {
       basketballPhysics.velocity.z *= basketballPhysics.bounceDecay;
       
       // Reduce rotation on bounce
-      basketballPhysics.rotationSpeed.multiplyScalar(0.7);
+      basketballPhysics.rotationSpeed.multiplyScalar(0.8);
     } else {
       // Stop bouncing
       basketballPhysics.velocity.set(0, 0, 0);
       basketballPhysics.rotationSpeed.set(0, 0, 0);
       basketballPhysics.isFlying = false;
+      return; // Exit early to prevent further processing
     }
   }
   
-  // Check boundaries (keep ball on court during flight)
+  // Enhanced state checking to prevent stuck physics
+  const totalSpeed = basketballPhysics.velocity.length();
+  const rotationSpeed = basketballPhysics.rotationSpeed.length();
+  
+  // Multiple conditions to detect when ball should stop flying
+  const isOnGround = basketball.position.y <= basketballPhysics.groundY + 0.02;
+  const isMovingSlowly = totalSpeed < 0.2;
+  const isRotatingSlowly = rotationSpeed < 0.1;
+  const hasLowVerticalVelocity = Math.abs(basketballPhysics.velocity.y) < 0.3;
+  
+  // If ball is essentially at rest, stop physics completely
+  if (isOnGround && isMovingSlowly && (isRotatingSlowly || hasLowVerticalVelocity)) {
+    basketballPhysics.velocity.set(0, 0, 0);
+    basketballPhysics.rotationSpeed.set(0, 0, 0);
+    basketballPhysics.isFlying = false;
+    basketball.position.y = basketballPhysics.groundY; // Ensure exact ground position
+    return; // Exit early
+  }
+  
+  // Additional failsafe: if physics has been running for too long with low speed
+  if (!basketballPhysics.startTime) {
+    basketballPhysics.startTime = performance.now();
+  }
+  
+  const physicsRunTime = (performance.now() - basketballPhysics.startTime) / 1000;
+  if (physicsRunTime > 10 && totalSpeed < 0.5) { // 10 seconds timeout with low speed
+    basketballPhysics.velocity.set(0, 0, 0);
+    basketballPhysics.rotationSpeed.set(0, 0, 0);
+    basketballPhysics.isFlying = false;
+    basketball.position.y = basketballPhysics.groundY;
+    basketballPhysics.startTime = null;
+    return;
+  }
+  
+  // Check boundaries (keep ball on court during flight) - Phase 4 improved
+  const courtBounce = 0.3; // Reduced bounce on court walls
+  
   if (basketball.position.x < -15) {
     basketball.position.x = -15;
-    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * 0.5;
+    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * courtBounce;
   }
   if (basketball.position.x > 15) {
     basketball.position.x = 15;
-    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * 0.5;
+    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * courtBounce;
   }
   if (basketball.position.z < -7.5) {
     basketball.position.z = -7.5;
-    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * 0.5;
+    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * courtBounce;
   }
   if (basketball.position.z > 7.5) {
     basketball.position.z = 7.5;
-    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * 0.5;
+    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * courtBounce;
   }
 }
 
@@ -883,6 +1029,21 @@ function updateBasketballMovement() {
       basketball.position.z = newZ;
     }
   }
+}
+
+/**
+ * Manually resets basketball to center court and stops all physics
+ */
+function resetBasketball() {
+  if (!basketball) return;
+  
+  basketball.position.set(0, basketballPhysics.groundY, 0);
+  basketballPhysics.velocity.set(0, 0, 0);
+  basketballPhysics.rotationSpeed.set(0, 0, 0);
+  basketballPhysics.isFlying = false;
+  basketballPhysics.startTime = null;
+  basketballShot.power = 0;
+  updatePowerIndicator();
 }
 
 /**
@@ -1078,6 +1239,13 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); // Prevent page scroll
     if (!isFreeCamera) {
       shootBasketball();
+    }
+  }
+  
+  // Basketball reset (R key)
+  if (e.key === 'r' || e.key === 'R') {
+    if (!isFreeCamera) {
+      resetBasketball();
     }
   }
 });
