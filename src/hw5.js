@@ -448,7 +448,7 @@ function createBasketballHoop(hoopX) {
 
   // Rim
   const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(0.23, 0.02, 8, 16),
+    new THREE.TorusGeometry(0.4, 0.02, 8, 16), // Realistic size - larger than original but not too big
     new THREE.MeshPhongMaterial({ color: 0xff6600 })
   );
   rim.rotation.x = degreesToRadians(-90);
@@ -459,10 +459,10 @@ function createBasketballHoop(hoopX) {
   // Net
   const netGroup = new THREE.Group();
   const netMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-  const netSegments = 16; // More vertical strands
+  const netSegments = 12; // Fewer vertical strands for less rigid appearance
   const netHeight = 0.5;
-  const topRadius = 0.23;
-  const bottomRadius = 0.13;
+  const topRadius = 0.4; // Match the realistic rim size
+  const bottomRadius = 0.2; // Realistic taper while still allowing ball passage
   // Vertical strands
   for (let i = 0; i < netSegments; i++) {
     const angle = (i / netSegments) * Math.PI * 2;
@@ -473,7 +473,7 @@ function createBasketballHoop(hoopX) {
     netGroup.add(new THREE.Line(geometry, netMaterial));
   }
   // Horizontal rings (simulate net structure)
-  const ringCount = 4;
+  const ringCount = 3; // Fewer rings for less rigid appearance
   for (let j = 1; j <= ringCount; j++) {
     const ringRadius = topRadius - (topRadius - bottomRadius) * (j / ringCount);
     const ringY = -netHeight * (j / ringCount);
@@ -610,12 +610,51 @@ function createScoreboard() {
     new THREE.MeshBasicMaterial({ map: createScoreTexture('PLAYER B', '00') }), // left
     new THREE.MeshBasicMaterial({ color: 0x222233 }), // top
     new THREE.MeshBasicMaterial({ color: 0x222233 }), // bottom
-    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '12:00') }), // front
-    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '12:00') })  // back
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '00:00') }), // front - start at 00:00
+    new THREE.MeshBasicMaterial({ map: createScoreTexture('TIME', '00:00') })  // back - start at 00:00
   ];
   scoreboard.material = materials;
 
+  // Store reference for timer updates
+  gameTimer.scoreboard = scoreboard;
+  gameTimer.createScoreTexture = createScoreTexture; // Store function for updates
+
   scene.add(scoreboard);
+}
+
+/**
+ * Starts the game timer
+ */
+function startGameTimer() {
+  if (!gameTimer.startTime) {
+    gameTimer.startTime = performance.now();
+  }
+}
+
+/**
+ * Updates the game timer on the scoreboard
+ */
+function updateGameTimer() {
+  if (!gameTimer.startTime || !gameTimer.scoreboard) return;
+  
+  const elapsedSeconds = Math.floor((performance.now() - gameTimer.startTime) / 1000);
+  const minutes = Math.floor(elapsedSeconds / 60);
+  const seconds = elapsedSeconds % 60;
+  
+  const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  
+  // Only update if time has changed
+  if (timeString !== gameTimer.currentTime) {
+    gameTimer.currentTime = timeString;
+    
+    // Update the scoreboard time displays (front and back faces)
+    gameTimer.scoreboard.material[4].map = gameTimer.createScoreTexture('TIME', timeString); // front
+    gameTimer.scoreboard.material[5].map = gameTimer.createScoreTexture('TIME', timeString); // back
+    
+    // Mark textures for update
+    gameTimer.scoreboard.material[4].map.needsUpdate = true;
+    gameTimer.scoreboard.material[5].map.needsUpdate = true;
+  }
 }
 
 // =======================
@@ -655,10 +694,10 @@ const basketballShot = {
 const basketballPhysics = {
   isFlying: false,
   velocity: new THREE.Vector3(0, 0, 0),
-  gravity: -9.81 * 2, // Accelerated gravity for game feel
+  gravity: -9.81 * 1.2, // Reduced gravity for slower, more controllable shots
   groundY: 0.30, // Ball rest height on court
   bounceDecay: 0.7, // Energy loss on ground bounce (improved)
-  rimBounceDecay: 0.5, // Energy loss on rim bounce (more realistic)
+  rimBounceDecay: 0.05, // Almost no energy loss on rim bounce (ball passes through easily)
   backboardBounceDecay: 0.4, // Energy loss on backboard bounce
   minBounceVelocity: 0.3, // Minimum velocity to continue bouncing (lowered)
   airResistance: 0.99, // Air resistance factor (reduced drag)
@@ -682,10 +721,18 @@ const basketballScoring = {
   isTrackingShot: false,
   shotStartTime: null,
   consecutiveMisses: 0,
+  hasScored: false, // Prevent multiple scores for same shot
   // Score values
-  twoPointZone: 22, // Distance threshold for 2-point shots (inside 3-point line)
+  twoPointZone: 6.8, // Distance threshold for 2-point shots (inside 3-point line - matches visual arc)
   threePointValue: 3,
   twoPointValue: 2
+};
+
+// Game timer system
+const gameTimer = {
+  startTime: null,
+  currentTime: '00:00',
+  scoreboard: null // Will hold reference to the scoreboard for updates
 };
 
 // Hoop positions for shot targeting and collision detection (HW6 Phase 4)
@@ -693,7 +740,7 @@ const hoopPositions = [
   { 
     x: -14, y: 4.5, z: 0, // Left hoop (targeting position)
     rimCenter: { x: -13.7, y: 4.5, z: 0 }, // Actual rim position (-15 + 1.3)
-    rimRadius: 0.23,
+    rimRadius: 0.4, // Balanced size - larger than original but still realistic
     backboardCenter: { x: -14, y: 5, z: 0 }, // Actual backboard position (-15 + 1)
     backboardWidth: 2.8,
     backboardHeight: 1.6
@@ -701,7 +748,7 @@ const hoopPositions = [
   { 
     x: 14, y: 4.5, z: 0, // Right hoop (targeting position)  
     rimCenter: { x: 13.7, y: 4.5, z: 0 }, // Actual rim position (15 - 1.3)
-    rimRadius: 0.23,
+    rimRadius: 0.4, // Balanced size - larger than original but still realistic
     backboardCenter: { x: 14, y: 5, z: 0 }, // Actual backboard position (15 - 1)
     backboardWidth: 2.8,
     backboardHeight: 1.6
@@ -712,7 +759,7 @@ const hoopPositions = [
  * Checks if basketball scored through a hoop (Phase 6)
  */
 function checkBasketballScore() {
-  if (!basketball || !basketballPhysics.isFlying) return false;
+  if (!basketball || !basketballPhysics.isFlying || basketballScoring.hasScored) return false;
   
   const ballPos = basketball.position;
   
@@ -720,10 +767,10 @@ function checkBasketballScore() {
     const rimCenter = new THREE.Vector3(hoop.rimCenter.x, hoop.rimCenter.y, hoop.rimCenter.z);
     const distanceToRim = ballPos.distanceTo(rimCenter);
     
-    // Check if ball is passing through the rim from above
-    if (distanceToRim < hoop.rimRadius * 0.9 && // Within rim bounds (slightly smaller for accuracy)
-        ballPos.y < hoop.rimCenter.y && ballPos.y > hoop.rimCenter.y - 0.3 && // Passing through rim height
-        basketballPhysics.velocity.y < 0) { // Moving downward
+    // Check if ball is anywhere near the hoop for extremely easy scoring
+    if (distanceToRim < hoop.rimRadius * 2.0 && // Very large detection zone (double the rim!)
+        ballPos.y < hoop.rimCenter.y + 0.5 && ballPos.y > hoop.rimCenter.y - 1.5 && // Extremely generous vertical range
+        Math.abs(basketballPhysics.velocity.y) < 5) { // Allow almost any movement
       
       // Calculate shot distance for scoring
       const shotDistance = Math.sqrt(
@@ -735,7 +782,8 @@ function checkBasketballScore() {
       const points = shotDistance > basketballScoring.twoPointZone ? 
                     basketballScoring.threePointValue : basketballScoring.twoPointValue;
       
-      // Register the score
+      // Register the score and mark as scored
+      basketballScoring.hasScored = true;
       registerScore(true, points, shotDistance);
       
       return true;
@@ -764,25 +812,202 @@ function registerScore(scored, points = 0, distance = 0) {
       basketballScoring.bestStreak = basketballScoring.currentStreak;
     }
     
-    // Show visual feedback
-    showScorePopup(`${points === 3 ? '3-POINTER!' : 'BASKET!'} +${points}`, 'success');
+    // Enhanced shot feedback with more variety (Phase 7)
+    let feedbackText, feedbackType;
+    
+    // Determine shot type and distance category
+    const isThreePointer = points === 3;
+    const isLongRange = distance > 6.0;
+    const isMidRange = distance > 3.0 && distance <= 6.0;
+    const isCloseRange = distance <= 3.0;
+    
+    // Special streak achievements
+    if (basketballScoring.currentStreak >= 10) {
+      feedbackText = `🔥 ON FIRE! ${basketballScoring.currentStreak} STRAIGHT! 🔥`;
+      feedbackType = 'perfect-shot';
+    } else if (basketballScoring.currentStreak >= 5) {
+      feedbackText = `🎯 HOT STREAK! ${basketballScoring.currentStreak} IN A ROW!`;
+      feedbackType = 'streak-bonus';
+    } else if (isThreePointer && isLongRange) {
+      const messages = [
+        '🏀 DEEP THREE! NOTHING BUT NET!',
+        '⭐ DOWNTOWN! SPLASH!',
+        '🎯 FROM WAY OUT! SWISH!',
+        '🌟 LONG BOMB! PERFECT!'
+      ];
+      feedbackText = messages[Math.floor(Math.random() * messages.length)] + ` +${points}`;
+      feedbackType = 'perfect-shot';
+    } else if (isThreePointer) {
+      const messages = [
+        '🏀 THREE-POINTER!',
+        '⭐ FROM BEYOND THE ARC!',
+        '🎯 TRIPLE THREAT!',
+        '🌟 THREE-BALL!'
+      ];
+      feedbackText = messages[Math.floor(Math.random() * messages.length)] + ` +${points}`;
+      feedbackType = 'success';
+    } else if (isMidRange) {
+      const messages = [
+        '🏀 MID-RANGE MONEY!',
+        '⭐ SMOOTH JUMPER!',
+        '🎯 TEXTBOOK SHOT!',
+        '🌟 PURE STROKE!'
+      ];
+      feedbackText = messages[Math.floor(Math.random() * messages.length)] + ` +${points}`;
+      feedbackType = 'success';
+    } else if (isCloseRange) {
+      const messages = [
+        '🏀 EASY BUCKET!',
+        '⭐ IN THE PAINT!',
+        '🎯 CLOSE RANGE!',
+        '🌟 LAYUP GOOD!'
+      ];
+      feedbackText = messages[Math.floor(Math.random() * messages.length)] + ` +${points}`;
+      feedbackType = 'success';
+    } else {
+      feedbackText = `${isThreePointer ? '3-POINTER!' : 'BASKET!'} +${points}`;
+      feedbackType = 'success';
+    }
+    
+    showScorePopup(feedbackText, feedbackType);
     
   } else {
     basketballScoring.currentStreak = 0;
     basketballScoring.consecutiveMisses++;
     basketballScoring.lastShotResult = 'missed';
     
-    // Show miss feedback
+    // Enhanced miss feedback with more variety (Phase 7)
+    let missText, missType;
+    
     if (basketballScoring.consecutiveMisses === 1) {
-      showScorePopup('MISS', 'miss');
+      const messages = [
+        '❌ MISS!',
+        '🚫 OFF THE MARK!',
+        '😫 NO GOOD!',
+        '💔 ALMOST!'
+      ];
+      missText = messages[Math.floor(Math.random() * messages.length)];
+      missType = 'miss';
+    } else if (basketballScoring.consecutiveMisses === 2) {
+      const messages = [
+        '😰 TWO IN A ROW!',
+        '🥶 COOLING OFF!',
+        '💔 BACK-TO-BACK MISSES!',
+        '😤 SHAKE IT OFF!'
+      ];
+      missText = messages[Math.floor(Math.random() * messages.length)];
+      missType = 'miss';
+    } else if (basketballScoring.consecutiveMisses >= 5) {
+      const messages = [
+        `🧊 ICE COLD! ${basketballScoring.consecutiveMisses} STRAIGHT MISSES!`,
+        `😱 BRUTAL STREAK! ${basketballScoring.consecutiveMisses} IN A ROW!`,
+        `💀 NIGHTMARE! ${basketballScoring.consecutiveMisses} MISSES!`,
+        `😭 CAN'T BUY A BUCKET! ${basketballScoring.consecutiveMisses} MISSES!`
+      ];
+      missText = messages[Math.floor(Math.random() * messages.length)];
+      missType = 'streak-miss';
     } else if (basketballScoring.consecutiveMisses >= 3) {
-      showScorePopup(`${basketballScoring.consecutiveMisses} MISSES IN A ROW`, 'streak-miss');
+      const messages = [
+        `😬 ${basketballScoring.consecutiveMisses} MISSES IN A ROW!`,
+        `🥶 COLD STREAK! ${basketballScoring.consecutiveMisses} STRAIGHT!`,
+        `💔 STRUGGLING! ${basketballScoring.consecutiveMisses} MISSES!`,
+        `😤 TOUGH STRETCH! ${basketballScoring.consecutiveMisses} IN A ROW!`
+      ];
+      missText = messages[Math.floor(Math.random() * messages.length)];
+      missType = 'streak-miss';
+    } else {
+      missText = 'MISS!';
+      missType = 'miss';
     }
+    
+    showScorePopup(missText, missType);
   }
   
   // Update UI
   updateScoreDisplay();
+  updateDynamicTips(); // Add dynamic tips update (Phase 7)
   basketballScoring.isTrackingShot = false;
+}
+
+/**
+ * Dynamic tips system based on player performance (Phase 7)
+ */
+function updateDynamicTips() {
+  const tipContent = document.getElementById('tip-content');
+  if (!tipContent) return;
+  
+  const accuracy = basketballScoring.shotsAttempted > 0 ? 
+                  Math.round((basketballScoring.shotsMade / basketballScoring.shotsAttempted) * 100) : 0;
+  
+  let tip = '';
+  
+  // Performance-based tips
+  if (basketballScoring.shotsAttempted === 0) {
+    tip = "🏀 <strong>Getting Started:</strong> Use arrow keys to position the ball, adjust power with W/S, then press SPACE to shoot!";
+  } else if (basketballScoring.shotsAttempted < 5) {
+    tip = "🎯 <strong>Learning the Basics:</strong> Try different power levels! Low power for close shots, high power for three-pointers.";
+  } else if (accuracy >= 80) {
+    tip = "🔥 <strong>You're On Fire!</strong> Amazing accuracy! Try challenging yourself with longer shots from the three-point line.";
+  } else if (accuracy >= 60) {
+    tip = "⭐ <strong>Great Shooting:</strong> Solid performance! Focus on consistency and try mixing up your shot locations.";
+  } else if (accuracy >= 40) {
+    tip = "💪 <strong>Keep Practicing:</strong> You're improving! Remember: aim for the back of the rim and use appropriate power.";
+  } else if (accuracy >= 20) {
+    tip = "🎯 <strong>Shooting Tips:</strong> Focus on your fundamentals. Use medium power for mid-range shots and position carefully.";
+  } else {
+    tip = "🤔 <strong>Struggling?</strong> Try getting closer to the basket first. Use low power for close shots and practice your timing!";
+  }
+  
+  // Streak-based tips
+  if (basketballScoring.currentStreak >= 5) {
+    tip = "🔥 <strong>Hot Streak!</strong> You're in the zone! Keep this rhythm going and try for even longer shots!";
+  } else if (basketballScoring.consecutiveMisses >= 5) {
+    tip = "😔 <strong>Cold Streak?</strong> Take a breath! Try closer shots to build confidence, or reset with R key.";
+  } else if (basketballScoring.consecutiveMisses >= 3) {
+    tip = "🎯 <strong>Adjustment Time:</strong> Maybe try different power levels or get closer to the basket for easier shots.";
+  }
+  
+  // Shot-specific tips based on last shot
+  if (basketballScoring.lastShotResult === 'made' && basketballScoring.lastShotDistance > 6.0) {
+    tip = "🌟 <strong>Deep Shot Master!</strong> Excellent long-range shooting! You've mastered the three-point game.";
+  } else if (basketballScoring.lastShotResult === 'missed' && basketballScoring.lastShotDistance > 6.0) {
+    tip = "📏 <strong>Long Range Challenge:</strong> Long shots need high power but also precise aim. Try 80-90% power for deep threes.";
+  }
+  
+  // Power-related tips
+  const currentPowerPercentage = (basketballShot.power / basketballShot.maxPower) * 100;
+  if (currentPowerPercentage > 90 && basketballScoring.consecutiveMisses >= 2) {
+    tip = "⚡ <strong>Power Management:</strong> High power shots can overshoot! Try reducing power slightly for better accuracy.";
+  } else if (currentPowerPercentage < 30 && basketballScoring.lastShotDistance > 4.0) {
+    tip = "💪 <strong>Need More Power:</strong> Increase shot power (W key) for longer distance shots. Low power is for close-range only.";
+  }
+  
+  // Advanced tips for experienced players
+  if (basketballScoring.shotsAttempted >= 20) {
+    if (basketballScoring.bestStreak < 3) {
+      tip = "🎯 <strong>Consistency Challenge:</strong> Try to build longer streaks by finding your sweet spot power level.";
+    } else if (accuracy < 40) {
+      tip = "📊 <strong>Analysis:</strong> Your accuracy could improve. Focus on 2-point shots first, then work on three-pointers.";
+    }
+  }
+  
+  // Special achievement tips
+  if (basketballScoring.totalScore >= 50) {
+    tip = "🏆 <strong>High Scorer!</strong> Impressive total! You're becoming a basketball simulator expert!";
+  } else if (basketballScoring.bestStreak >= 10) {
+    tip = "🔥 <strong>Streak Legend!</strong> Double-digit streak achieved! You have incredible consistency!";
+  }
+  
+  tipContent.innerHTML = tip;
+  
+  // Add subtle animation when tip changes
+  const tipsPanel = document.getElementById('tips-panel');
+  if (tipsPanel) {
+    tipsPanel.style.transform = 'scale(1.02)';
+    setTimeout(() => {
+      tipsPanel.style.transform = 'scale(1)';
+    }, 200);
+  }
 }
 
 /**
@@ -801,48 +1026,152 @@ function showScorePopup(text, type) {
   popup.textContent = text;
   popup.className = `score-popup ${type}`;
   
-  // Style the popup
+  // Enhanced styling with better animations and effects
+  let backgroundColor, borderColor, textShadow;
+  
+  switch(type) {
+    case 'success':
+      backgroundColor = 'linear-gradient(135deg, rgba(76, 175, 80, 0.95), rgba(139, 195, 74, 0.95))';
+      borderColor = '#4CAF50';
+      textShadow = '0 0 10px rgba(76, 175, 80, 0.8), 2px 2px 4px rgba(0,0,0,0.8)';
+      break;
+    case 'miss':
+      backgroundColor = 'linear-gradient(135deg, rgba(244, 67, 54, 0.95), rgba(255, 87, 34, 0.95))';
+      borderColor = '#f44336';
+      textShadow = '0 0 10px rgba(244, 67, 54, 0.8), 2px 2px 4px rgba(0,0,0,0.8)';
+      break;
+    case 'streak-miss':
+      backgroundColor = 'linear-gradient(135deg, rgba(156, 39, 176, 0.95), rgba(233, 30, 99, 0.95))';
+      borderColor = '#9C27B0';
+      textShadow = '0 0 10px rgba(156, 39, 176, 0.8), 2px 2px 4px rgba(0,0,0,0.8)';
+      break;
+    case 'streak-bonus':
+      backgroundColor = 'linear-gradient(135deg, rgba(255, 193, 7, 0.95), rgba(255, 152, 0, 0.95))';
+      borderColor = '#FFC107';
+      textShadow = '0 0 15px rgba(255, 193, 7, 0.9), 2px 2px 4px rgba(0,0,0,0.8)';
+      break;
+    case 'perfect-shot':
+      backgroundColor = 'linear-gradient(135deg, rgba(255, 215, 0, 0.95), rgba(255, 193, 7, 0.95))';
+      borderColor = '#FFD700';
+      textShadow = '0 0 20px rgba(255, 215, 0, 1), 2px 2px 4px rgba(0,0,0,0.8)';
+      break;
+    default:
+      backgroundColor = 'linear-gradient(135deg, rgba(96, 125, 139, 0.95), rgba(120, 144, 156, 0.95))';
+      borderColor = '#607D8B';
+      textShadow = '2px 2px 4px rgba(0,0,0,0.8)';
+  }
+  
+  // Enhanced popup styling
   popup.style.cssText = `
     position: fixed;
-    top: 20%;
+    top: 25%;
     left: 50%;
     transform: translateX(-50%);
-    background: ${type === 'success' ? 'rgba(0, 255, 0, 0.9)' : 
-                 type === 'miss' ? 'rgba(255, 100, 100, 0.9)' : 
-                 'rgba(255, 200, 0, 0.9)'};
+    background: ${backgroundColor};
     color: white;
-    padding: 20px 40px;
-    border-radius: 10px;
-    font-size: 24px;
+    padding: 25px 50px;
+    border-radius: 15px;
+    font-size: ${type === 'perfect-shot' || type === 'streak-bonus' ? '32px' : '26px'};
     font-weight: bold;
     text-align: center;
     z-index: 1000;
-    animation: scorePopupAnimation 2s ease-out forwards;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-    border: 2px solid rgba(255,255,255,0.3);
+    animation: ${type === 'perfect-shot' ? 'perfectShotAnimation' : type === 'streak-bonus' ? 'streakBonusAnimation' : 'enhancedScorePopupAnimation'} 3s ease-out forwards;
+    text-shadow: ${textShadow};
+    border: 3px solid ${borderColor};
+    box-shadow: 
+      0 0 30px rgba(0,0,0,0.5),
+      0 0 20px ${borderColor}40,
+      inset 0 1px 0 rgba(255,255,255,0.2);
+    backdrop-filter: blur(2px);
+    letter-spacing: 1px;
   `;
   
-  // Add CSS animation keyframes if not already added
-  if (!document.getElementById('score-popup-styles')) {
+  // Add enhanced CSS animation keyframes if not already added
+  if (!document.getElementById('enhanced-score-popup-styles')) {
     const style = document.createElement('style');
-    style.id = 'score-popup-styles';
+    style.id = 'enhanced-score-popup-styles';
     style.textContent = `
-      @keyframes scorePopupAnimation {
+      @keyframes enhancedScorePopupAnimation {
         0% {
           opacity: 0;
-          transform: translateX(-50%) translateY(-20px) scale(0.8);
+          transform: translateX(-50%) translateY(-30px) scale(0.7) rotateX(20deg);
         }
-        20% {
+        15% {
           opacity: 1;
-          transform: translateX(-50%) translateY(0) scale(1.1);
+          transform: translateX(-50%) translateY(-5px) scale(1.15) rotateX(-5deg);
         }
-        80% {
+        25% {
+          transform: translateX(-50%) translateY(0) scale(1.05) rotateX(0deg);
+        }
+        85% {
           opacity: 1;
-          transform: translateX(-50%) translateY(0) scale(1);
+          transform: translateX(-50%) translateY(0) scale(1) rotateX(0deg);
         }
         100% {
           opacity: 0;
-          transform: translateX(-50%) translateY(10px) scale(0.9);
+          transform: translateX(-50%) translateY(15px) scale(0.8) rotateX(-10deg);
+        }
+      }
+      
+      @keyframes perfectShotAnimation {
+        0% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-40px) scale(0.5) rotate(-10deg);
+        }
+        10% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(-10px) scale(1.3) rotate(5deg);
+        }
+        20% {
+          transform: translateX(-50%) translateY(0) scale(1.1) rotate(-2deg);
+        }
+        30% {
+          transform: translateX(-50%) translateY(0) scale(1.2) rotate(1deg);
+        }
+        40% {
+          transform: translateX(-50%) translateY(0) scale(1.1) rotate(0deg);
+        }
+        80% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0) scale(1.1) rotate(0deg);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(20px) scale(0.7) rotate(5deg);
+        }
+      }
+      
+      @keyframes streakBonusAnimation {
+        0% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-50px) scale(0.3);
+        }
+        10% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(-10px) scale(1.4);
+        }
+        15% {
+          transform: translateX(-50%) translateY(0) scale(1.1);
+        }
+        20% {
+          transform: translateX(-50%) translateY(-5px) scale(1.25);
+        }
+        25% {
+          transform: translateX(-50%) translateY(0) scale(1.15);
+        }
+        30% {
+          transform: translateX(-50%) translateY(-2px) scale(1.2);
+        }
+        35% {
+          transform: translateX(-50%) translateY(0) scale(1.1);
+        }
+        85% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0) scale(1.1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(25px) scale(0.6);
         }
       }
     `;
@@ -856,11 +1185,11 @@ function showScorePopup(text, type) {
     if (popup.parentNode) {
       popup.remove();
     }
-  }, 2000);
+  }, 3000);
 }
 
 /**
- * Updates the score display UI (Phase 6)
+ * Updates the score display UI (Phase 7: Enhanced)
  */
 function updateScoreDisplay() {
   const scoreDisplay = document.getElementById('score-display');
@@ -869,27 +1198,78 @@ function updateScoreDisplay() {
   const accuracy = basketballScoring.shotsAttempted > 0 ? 
                   Math.round((basketballScoring.shotsMade / basketballScoring.shotsAttempted) * 100) : 0;
   
+  // Compact score display with smaller layout
   scoreDisplay.innerHTML = `
-    <div style="background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: white; font-family: Arial, sans-serif;">
-      <div style="font-size: 24px; font-weight: bold; color: #FFD700; margin-bottom: 10px;">
-        SCORE: ${basketballScoring.totalScore}
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
-        <div>
-          <div><strong>Shots:</strong> ${basketballScoring.shotsMade}/${basketballScoring.shotsAttempted}</div>
-          <div><strong>Accuracy:</strong> ${accuracy}%</div>
+    <h2 style="margin: 0 0 10px 0; color: #FFD700; text-align: center; font-size: 16px;">
+      🏀 Basketball Simulator 🏀
+    </h2>
+    
+    <!-- Main Score Section -->
+    <div style="background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(30,30,30,0.9)); 
+                padding: 12px; border-radius: 10px; color: white; font-family: 'Arial', sans-serif;
+                border: 2px solid #FFD700; box-shadow: 0 2px 10px rgba(255,215,0,0.2);">
+      
+      <!-- Total Score Display -->
+      <div style="text-align: center; margin-bottom: 12px;">
+        <div style="font-size: 24px; font-weight: bold; color: #FFD700; text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+          ${basketballScoring.totalScore}
         </div>
-        <div>
-          <div><strong>Streak:</strong> ${basketballScoring.currentStreak}</div>
-          <div><strong>Best:</strong> ${basketballScoring.bestStreak}</div>
-        </div>
+        <div style="font-size: 10px; color: #AAA; margin-top: 2px;">TOTAL POINTS</div>
       </div>
-      ${basketballScoring.lastShotResult ? 
-        `<div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-          Last: ${basketballScoring.lastShotResult.toUpperCase()} 
+      
+      <!-- Statistics Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 8px;">
+        
+        <!-- Shooting Stats -->
+        <div style="background: rgba(255,215,0,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(255,215,0,0.3);">
+          <div style="font-weight: bold; color: #FFD700; margin-bottom: 4px; font-size: 9px;">📊 SHOOTING</div>
+          <div style="font-size: 10px;"><strong>Made:</strong> ${basketballScoring.shotsMade}</div>
+          <div style="font-size: 10px;"><strong>Attempts:</strong> ${basketballScoring.shotsAttempted}</div>
+          <div style="color: ${accuracy >= 50 ? '#4CAF50' : accuracy >= 30 ? '#FF9800' : '#f44336'}; font-size: 10px;">
+            <strong>Accuracy:</strong> ${accuracy}%
+          </div>
+        </div>
+        
+        <!-- Streak Stats -->
+        <div style="background: rgba(76,175,80,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(76,175,80,0.3);">
+          <div style="font-weight: bold; color: #4CAF50; margin-bottom: 4px; font-size: 9px;">🔥 STREAKS</div>
+          <div style="font-size: 10px;"><strong>Current:</strong> ${basketballScoring.currentStreak}</div>
+          <div style="font-size: 10px;"><strong>Best:</strong> ${basketballScoring.bestStreak}</div>
+          <div style="color: ${basketballScoring.consecutiveMisses > 2 ? '#f44336' : '#AAA'}; font-size: 10px;">
+            <strong>Misses:</strong> ${basketballScoring.consecutiveMisses}
+          </div>
+        </div>
+        
+        <!-- Shot Analysis -->
+        <div style="background: rgba(33,150,243,0.1); padding: 6px; border-radius: 5px; text-align: center; border: 1px solid rgba(33,150,243,0.3);">
+          <div style="font-weight: bold; color: #2196F3; margin-bottom: 4px; font-size: 9px;">🎯 ANALYSIS</div>
+          ${basketballScoring.lastShotResult ? 
+            `<div style="color: ${basketballScoring.lastShotResult === 'made' ? '#4CAF50' : '#f44336'}; font-size: 10px;">
+              <strong>Last:</strong> ${basketballScoring.lastShotResult.toUpperCase()}
+            </div>` : '<div style="font-size: 10px;"><strong>Last:</strong> ---</div>'}
           ${basketballScoring.lastShotDistance > 0 ? 
-            `(${basketballScoring.lastShotDistance.toFixed(1)}m)` : ''}
-        </div>` : ''}
+            `<div style="font-size: 10px;"><strong>Distance:</strong> ${basketballScoring.lastShotDistance.toFixed(1)}m</div>` : 
+            '<div style="font-size: 10px;"><strong>Distance:</strong> ---</div>'}
+          <div style="color: #AAA; font-size: 9px;">
+            ${basketballScoring.lastShotDistance > basketballScoring.twoPointZone ? '3-Point Zone' : '2-Point Zone'}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Performance Indicators -->
+      <div style="border-top: 1px solid rgba(255,215,0,0.3); padding-top: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px;">
+          <div style="color: #AAA;">
+            Performance: 
+            <span style="color: ${accuracy >= 70 ? '#4CAF50' : accuracy >= 50 ? '#FF9800' : accuracy >= 30 ? '#FFC107' : '#f44336'};">
+              ${accuracy >= 70 ? 'EXCELLENT' : accuracy >= 50 ? 'GOOD' : accuracy >= 30 ? 'AVERAGE' : 'NEEDS PRACTICE'}
+            </span>
+          </div>
+          <div style="color: #AAA;">
+            Press <strong style="color: #FFD700;">R</strong> to reset stats
+          </div>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -928,10 +1308,10 @@ function checkRimCollision() {
     const rimCenter = new THREE.Vector3(hoop.rimCenter.x, hoop.rimCenter.y, hoop.rimCenter.z);
     const distanceToRim = ballPos.distanceTo(rimCenter);
     
-    // Check if ball is close enough to rim
-    if (distanceToRim < (hoop.rimRadius + basketballPhysics.ballRadius)) {
-      // Check if ball is at approximately rim height
-      if (Math.abs(ballPos.y - hoop.rimCenter.y) < basketballPhysics.ballRadius) {
+    // Check if ball is close enough to rim (minimal collision to allow passage)
+    if (distanceToRim < (hoop.rimRadius + basketballPhysics.ballRadius * 0.1)) {
+      // Check if ball is at approximately rim height (minimal height check)
+      if (Math.abs(ballPos.y - hoop.rimCenter.y) < basketballPhysics.ballRadius * 0.5) {
         // Calculate bounce direction
         const bounceDirection = ballPos.clone().sub(rimCenter).normalize();
         
@@ -939,11 +1319,11 @@ function checkRimCollision() {
         const currentSpeed = basketballPhysics.velocity.length();
         basketballPhysics.velocity = bounceDirection.multiplyScalar(currentSpeed * basketballPhysics.rimBounceDecay);
         
-        // Add some randomness for realistic rim bounces
+        // Add almost no randomness for rim bounces (let ball pass through)
         basketballPhysics.velocity.add(new THREE.Vector3(
-          (Math.random() - 0.5) * 2,
-          Math.random() * 3,
-          (Math.random() - 0.5) * 2
+          (Math.random() - 0.5) * 0.1,
+          Math.random() * 0.2,
+          (Math.random() - 0.5) * 0.1
         ));
         
         // Phase 5: Update rotation based on new velocity after rim bounce
@@ -1011,13 +1391,20 @@ function checkBackboardCollision() {
  * Calculates the initial velocity needed to reach the target hoop
  */
 function calculateShotVelocity(startPos, targetPos, power) {
-  const powerFactor = (power / 100) * 1.0 + 0.4; // Scale power from 0.4 to 1.4 (more balanced)
+  const powerFactor = (power / 100) * 1.2 + 0.5; // Balanced power: 0.5 to 1.7 (strong enough but not excessive)
   const dx = targetPos.x - startPos.x;
   const dz = targetPos.z - startPos.z;
   const distance = Math.sqrt(dx * dx + dz * dz);
   
-  // Calculate optimal angle (45 degrees adjusted for distance)
-  const optimalAngle = Math.PI / 4 + (distance / 30) * (Math.PI / 6); // Adjust angle based on distance
+  // Ensure proper arc for close shots (inside paint)
+  let optimalAngle;
+  if (distance < 4.0) {
+    // For close shots, use a steeper angle (50-60 degrees) for proper arc
+    optimalAngle = Math.PI / 3 + (Math.PI / 12); // ~55-60 degrees
+  } else {
+    // For longer shots, use standard calculation
+    optimalAngle = Math.PI / 4 + (distance / 30) * (Math.PI / 6); // Adjust angle based on distance
+  }
   
   // Calculate initial speed needed to reach target (balanced multiplier)
   const speed = Math.sqrt(Math.abs(basketballPhysics.gravity) * distance / Math.sin(2 * optimalAngle)) * powerFactor * 1.3;
@@ -1048,6 +1435,7 @@ function shootBasketball() {
   basketballScoring.isTrackingShot = true;
   basketballScoring.shotStartTime = performance.now();
   basketballScoring.shotStartPosition = startPos.clone();
+  basketballScoring.hasScored = false; // Reset scoring flag for new shot
   
   // Calculate initial velocity based on power and target
   basketballPhysics.velocity = calculateShotVelocity(startPos, targetPos, basketballShot.power);
@@ -1068,6 +1456,12 @@ function shootBasketball() {
   // Initialize physics state properly
   basketballPhysics.isFlying = true;
   basketballPhysics.startTime = performance.now(); // Track when physics started
+  
+  // Clear trajectory preview when shot starts (Phase 7)
+  if (trajectoryLine) {
+    scene.remove(trajectoryLine);
+    trajectoryLine = null;
+  }
 }
 
 /**
@@ -1227,6 +1621,9 @@ function updateShotPower() {
 /**
  * Updates the visual power indicator in the UI
  */
+/**
+ * Updates the power indicator with enhanced visuals and tips (Phase 7)
+ */
 function updatePowerIndicator() {
   const powerFill = document.getElementById('power-fill');
   const powerText = document.getElementById('power-text');
@@ -1234,15 +1631,134 @@ function updatePowerIndicator() {
   if (powerFill && powerText) {
     const powerPercentage = (basketballShot.power / basketballShot.maxPower) * 100;
     powerFill.style.width = powerPercentage + '%';
-    powerText.textContent = Math.round(basketballShot.power) + '%';
     
-    // Color coding: green (low) -> yellow (medium) -> red (high)
-    if (powerPercentage < 33) {
-      powerFill.style.backgroundColor = '#00ff00'; // Green
-    } else if (powerPercentage < 66) {
-      powerFill.style.backgroundColor = '#ffff00'; // Yellow
+    // Enhanced power text with descriptive labels (Phase 7)
+    let powerLabel, powerTip;
+    if (powerPercentage < 20) {
+      powerLabel = 'SOFT';
+      powerTip = 'Too weak! Press W to increase';
+      powerFill.style.background = 'linear-gradient(90deg, #4CAF50, #66BB6A)';
+    } else if (powerPercentage < 40) {
+      powerLabel = 'LIGHT';
+      powerTip = 'Good for close shots';
+      powerFill.style.background = 'linear-gradient(90deg, #8BC34A, #9CCC65)';
+    } else if (powerPercentage < 60) {
+      powerLabel = 'MEDIUM';
+      powerTip = 'Perfect for mid-range';
+      powerFill.style.background = 'linear-gradient(90deg, #CDDC39, #D4E157)';
+    } else if (powerPercentage < 80) {
+      powerLabel = 'STRONG';
+      powerTip = 'Great for three-pointers';
+      powerFill.style.background = 'linear-gradient(90deg, #FFC107, #FFCA28)';
+    } else if (powerPercentage < 95) {
+      powerLabel = 'HARD';
+      powerTip = 'Max power! Aim carefully';
+      powerFill.style.background = 'linear-gradient(90deg, #FF9800, #FFB74D)';
     } else {
-      powerFill.style.backgroundColor = '#ff6600'; // Orange/Red
+      powerLabel = 'MAX!';
+      powerTip = 'Full power! Long range shots';
+      powerFill.style.background = 'linear-gradient(90deg, #FF5722, #FF7043)';
+    }
+    
+    powerText.innerHTML = `${Math.round(basketballShot.power)}%`;
+    
+    // Add power tip below the bar
+    const powerControls = document.querySelector('.power-controls');
+    if (powerControls) {
+      powerControls.innerHTML = `
+        <div style="margin-bottom: 4px; font-size: 10px; color: #FFD700; font-weight: bold; text-align: center;">
+          ${powerLabel} - ${powerTip}
+        </div>
+        <div style="font-size: 11px; text-align: center;">
+          <strong style="color: #4CAF50;">W</strong> increase • 
+          <strong style="color: #f44336;">S</strong> decrease • 
+          <strong style="color: #FFD700;">SPACE</strong> shoot
+        </div>
+      `;
+    }
+    
+    // Add visual effects for max power
+    if (powerPercentage >= 95) {
+      powerFill.style.boxShadow = '0 0 20px rgba(255, 87, 34, 0.8), inset 0 2px 4px rgba(255,255,255,0.3)';
+      powerFill.style.animation = 'powerPulse 0.5s ease-in-out infinite alternate';
+    } else {
+      powerFill.style.boxShadow = 'inset 0 2px 4px rgba(255,255,255,0.3), 0 0 10px rgba(255,215,0,0.4)';
+      powerFill.style.animation = 'none';
+    }
+    
+    // Update shot trajectory preview (Phase 7 Enhancement)
+    updateTrajectoryPreview();
+  }
+  
+  // Add power pulse animation if not exists
+  if (!document.getElementById('power-pulse-styles')) {
+    const style = document.createElement('style');
+    style.id = 'power-pulse-styles';
+    style.textContent = `
+      @keyframes powerPulse {
+        0% { transform: scaleY(1); }
+        100% { transform: scaleY(1.1); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+/**
+ * Visual trajectory preview system (Phase 7 Enhancement)
+ */
+let trajectoryLine = null;
+
+function updateTrajectoryPreview() {
+  // Remove existing trajectory line
+  if (trajectoryLine) {
+    scene.remove(trajectoryLine);
+    trajectoryLine = null;
+  }
+  
+  // Only show trajectory when aiming (power > 0)
+  if (basketballShot.power > 0 && basketball) {
+    const nearestHoop = getNearestHoop();
+    const ballPos = basketball.position.clone();
+    const targetPos = new THREE.Vector3(nearestHoop.x, nearestHoop.y - 0.5, nearestHoop.z);
+    
+    // Calculate trajectory points
+    const points = [];
+    const numPoints = 20;
+    const gravity = basketballPhysics.gravity;
+    
+    // Calculate initial velocity based on power and distance
+    const distance = ballPos.distanceTo(targetPos);
+    const angle = Math.PI / 4; // 45 degree angle for optimal trajectory
+    const power = basketballShot.power / 100;
+    const initialSpeed = power * 25; // Scale power to speed
+    
+    const vx = (targetPos.x - ballPos.x) / distance * initialSpeed * Math.cos(angle);
+    const vz = (targetPos.z - ballPos.z) / distance * initialSpeed * Math.cos(angle);
+    const vy = initialSpeed * Math.sin(angle);
+    
+    // Generate trajectory points
+    for (let i = 0; i <= numPoints; i++) {
+      const t = (i / numPoints) * 2; // Time scale
+      const x = ballPos.x + vx * t;
+      const y = ballPos.y + vy * t - 0.5 * Math.abs(gravity) * t * t;
+      const z = ballPos.z + vz * t;
+      
+      if (y < ballPos.y - 2) break; // Stop if trajectory goes too low
+      points.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Create trajectory line
+    if (points.length > 1) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({ 
+        color: basketballShot.power > 80 ? 0xff6600 : 0x00ff00,
+        opacity: 0.6,
+        transparent: true,
+        linewidth: 2
+      });
+      trajectoryLine = new THREE.Line(geometry, material);
+      scene.add(trajectoryLine);
     }
   }
 }
@@ -1349,6 +1865,9 @@ function updateBasketballMovement() {
     
     // Phase 5: Calculate rotation based on actual movement
     calculateRotationFromMovement(actualDeltaX, actualDeltaZ);
+    
+    // Update trajectory preview when ball moves (Phase 7)
+    updateTrajectoryPreview();
   } else {
     // Phase 5: Apply rotation decay when not moving
     applyRotationDecay();
@@ -1392,6 +1911,7 @@ function resetScoreSystem() {
   basketballScoring.isTrackingShot = false;
   basketballScoring.consecutiveMisses = 0;
   updateScoreDisplay();
+  updateDynamicTips(); // Update tips after reset (Phase 7)
   
   // Show reset confirmation
   showScorePopup('STATS RESET', 'miss');
@@ -1652,6 +2172,12 @@ function animate() {
   const deltaTime = Math.min(currentTime - (animate.lastTime || currentTime), 0.033); // Cap at ~30fps
   animate.lastTime = currentTime;
   
+  // Start timer on first frame
+  startGameTimer();
+  
+  // Update game timer
+  updateGameTimer();
+  
   // Update basketball system (movement + shot power + physics)
   updateBasketballSystem(deltaTime);
   
@@ -1680,4 +2206,26 @@ function animate() {
   }
   renderer.render(scene, camera);
 }
+
+// Initialize UI elements (Phase 7)
+updateScoreDisplay();
+updateDynamicTips();
+
+// Tips panel toggle functionality (Phase 7)
+const closeTipsButton = document.getElementById('close-tips');
+const reopenTipsButton = document.getElementById('reopen-tips');
+const tipsPanel = document.getElementById('tips-panel');
+
+if (closeTipsButton && reopenTipsButton && tipsPanel) {
+  closeTipsButton.addEventListener('click', () => {
+    tipsPanel.style.display = 'none';
+    reopenTipsButton.style.display = 'flex';
+  });
+  
+  reopenTipsButton.addEventListener('click', () => {
+    tipsPanel.style.display = 'block';
+    reopenTipsButton.style.display = 'none';
+  });
+}
+
 animate();
