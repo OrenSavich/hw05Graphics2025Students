@@ -651,7 +651,7 @@ const basketballShot = {
   }
 };
 
-// Basketball physics system (HW6 Phase 3, 4 & 5)
+// Basketball physics system (HW6 Phase 3, 4, 5 & 6)
 const basketballPhysics = {
   isFlying: false,
   velocity: new THREE.Vector3(0, 0, 0),
@@ -668,6 +668,24 @@ const basketballPhysics = {
   // Phase 5: Rotation animation settings
   rotationScaleFactor: 8, // How much rotation per unit of velocity (reduced for realism)
   rotationDecay: 0.95 // How quickly rotation slows down when not moving
+};
+
+// Phase 6: Scoring System
+const basketballScoring = {
+  totalScore: 0,
+  shotsAttempted: 0,
+  shotsMade: 0,
+  currentStreak: 0,
+  bestStreak: 0,
+  lastShotResult: null, // 'made', 'missed', or null
+  lastShotDistance: 0,
+  isTrackingShot: false,
+  shotStartTime: null,
+  consecutiveMisses: 0,
+  // Score values
+  twoPointZone: 22, // Distance threshold for 2-point shots (inside 3-point line)
+  threePointValue: 3,
+  twoPointValue: 2
 };
 
 // Hoop positions for shot targeting and collision detection (HW6 Phase 4)
@@ -689,6 +707,192 @@ const hoopPositions = [
     backboardHeight: 1.6
   }
 ];
+
+/**
+ * Checks if basketball scored through a hoop (Phase 6)
+ */
+function checkBasketballScore() {
+  if (!basketball || !basketballPhysics.isFlying) return false;
+  
+  const ballPos = basketball.position;
+  
+  for (const hoop of hoopPositions) {
+    const rimCenter = new THREE.Vector3(hoop.rimCenter.x, hoop.rimCenter.y, hoop.rimCenter.z);
+    const distanceToRim = ballPos.distanceTo(rimCenter);
+    
+    // Check if ball is passing through the rim from above
+    if (distanceToRim < hoop.rimRadius * 0.9 && // Within rim bounds (slightly smaller for accuracy)
+        ballPos.y < hoop.rimCenter.y && ballPos.y > hoop.rimCenter.y - 0.3 && // Passing through rim height
+        basketballPhysics.velocity.y < 0) { // Moving downward
+      
+      // Calculate shot distance for scoring
+      const shotDistance = Math.sqrt(
+        Math.pow(basketballScoring.shotStartPosition.x - hoop.rimCenter.x, 2) +
+        Math.pow(basketballScoring.shotStartPosition.z - hoop.rimCenter.z, 2)
+      );
+      
+      // Determine point value
+      const points = shotDistance > basketballScoring.twoPointZone ? 
+                    basketballScoring.threePointValue : basketballScoring.twoPointValue;
+      
+      // Register the score
+      registerScore(true, points, shotDistance);
+      
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Registers a score or miss and updates statistics (Phase 6)
+ */
+function registerScore(scored, points = 0, distance = 0) {
+  basketballScoring.shotsAttempted++;
+  basketballScoring.lastShotDistance = distance;
+  
+  if (scored) {
+    basketballScoring.shotsMade++;
+    basketballScoring.totalScore += points;
+    basketballScoring.currentStreak++;
+    basketballScoring.consecutiveMisses = 0;
+    basketballScoring.lastShotResult = 'made';
+    
+    // Update best streak
+    if (basketballScoring.currentStreak > basketballScoring.bestStreak) {
+      basketballScoring.bestStreak = basketballScoring.currentStreak;
+    }
+    
+    // Show visual feedback
+    showScorePopup(`${points === 3 ? '3-POINTER!' : 'BASKET!'} +${points}`, 'success');
+    
+  } else {
+    basketballScoring.currentStreak = 0;
+    basketballScoring.consecutiveMisses++;
+    basketballScoring.lastShotResult = 'missed';
+    
+    // Show miss feedback
+    if (basketballScoring.consecutiveMisses === 1) {
+      showScorePopup('MISS', 'miss');
+    } else if (basketballScoring.consecutiveMisses >= 3) {
+      showScorePopup(`${basketballScoring.consecutiveMisses} MISSES IN A ROW`, 'streak-miss');
+    }
+  }
+  
+  // Update UI
+  updateScoreDisplay();
+  basketballScoring.isTrackingShot = false;
+}
+
+/**
+ * Shows visual feedback popup for shots (Phase 6)
+ */
+function showScorePopup(text, type) {
+  // Remove existing popup
+  const existingPopup = document.getElementById('score-popup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+  
+  // Create new popup
+  const popup = document.createElement('div');
+  popup.id = 'score-popup';
+  popup.textContent = text;
+  popup.className = `score-popup ${type}`;
+  
+  // Style the popup
+  popup.style.cssText = `
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${type === 'success' ? 'rgba(0, 255, 0, 0.9)' : 
+                 type === 'miss' ? 'rgba(255, 100, 100, 0.9)' : 
+                 'rgba(255, 200, 0, 0.9)'};
+    color: white;
+    padding: 20px 40px;
+    border-radius: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 1000;
+    animation: scorePopupAnimation 2s ease-out forwards;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    border: 2px solid rgba(255,255,255,0.3);
+  `;
+  
+  // Add CSS animation keyframes if not already added
+  if (!document.getElementById('score-popup-styles')) {
+    const style = document.createElement('style');
+    style.id = 'score-popup-styles';
+    style.textContent = `
+      @keyframes scorePopupAnimation {
+        0% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-20px) scale(0.8);
+        }
+        20% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0) scale(1.1);
+        }
+        80% {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-50%) translateY(10px) scale(0.9);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  document.body.appendChild(popup);
+  
+  // Remove popup after animation
+  setTimeout(() => {
+    if (popup.parentNode) {
+      popup.remove();
+    }
+  }, 2000);
+}
+
+/**
+ * Updates the score display UI (Phase 6)
+ */
+function updateScoreDisplay() {
+  const scoreDisplay = document.getElementById('score-display');
+  if (!scoreDisplay) return;
+  
+  const accuracy = basketballScoring.shotsAttempted > 0 ? 
+                  Math.round((basketballScoring.shotsMade / basketballScoring.shotsAttempted) * 100) : 0;
+  
+  scoreDisplay.innerHTML = `
+    <div style="background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; color: white; font-family: Arial, sans-serif;">
+      <div style="font-size: 24px; font-weight: bold; color: #FFD700; margin-bottom: 10px;">
+        SCORE: ${basketballScoring.totalScore}
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; font-size: 14px;">
+        <div>
+          <div><strong>Shots:</strong> ${basketballScoring.shotsMade}/${basketballScoring.shotsAttempted}</div>
+          <div><strong>Accuracy:</strong> ${accuracy}%</div>
+        </div>
+        <div>
+          <div><strong>Streak:</strong> ${basketballScoring.currentStreak}</div>
+          <div><strong>Best:</strong> ${basketballScoring.bestStreak}</div>
+        </div>
+      </div>
+      ${basketballScoring.lastShotResult ? 
+        `<div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+          Last: ${basketballScoring.lastShotResult.toUpperCase()} 
+          ${basketballScoring.lastShotDistance > 0 ? 
+            `(${basketballScoring.lastShotDistance.toFixed(1)}m)` : ''}
+        </div>` : ''}
+    </div>
+  `;
+}
 
 /**
  * Finds the nearest hoop to the basketball
@@ -831,7 +1035,7 @@ function calculateShotVelocity(startPos, targetPos, power) {
 }
 
 /**
- * Shoots the basketball toward the nearest hoop (Phase 3 & 5)
+ * Shoots the basketball toward the nearest hoop (Phase 3, 5 & 6)
  */
 function shootBasketball() {
   if (!basketball || basketballPhysics.isFlying) return;
@@ -839,6 +1043,11 @@ function shootBasketball() {
   const nearestHoop = getNearestHoop();
   const targetPos = new THREE.Vector3(nearestHoop.x, nearestHoop.y, nearestHoop.z);
   const startPos = basketball.position.clone();
+  
+  // Phase 6: Start tracking this shot
+  basketballScoring.isTrackingShot = true;
+  basketballScoring.shotStartTime = performance.now();
+  basketballScoring.shotStartPosition = startPos.clone();
   
   // Calculate initial velocity based on power and target
   basketballPhysics.velocity = calculateShotVelocity(startPos, targetPos, basketballShot.power);
@@ -862,12 +1071,17 @@ function shootBasketball() {
 }
 
 /**
- * Updates basketball physics during flight (Phase 3, 4 & 5)
+ * Updates basketball physics during flight (Phase 3, 4, 5 & 6)
  */
 function updateBasketballPhysics(deltaTime) {
   if (!basketball || !basketballPhysics.isFlying) return;
   
-  // Check rim and backboard collisions first (Phase 4)
+  // Phase 6: Check for scoring first
+  if (basketballScoring.isTrackingShot && checkBasketballScore()) {
+    // Ball scored! Continue with physics but scoring is registered
+  }
+  
+  // Check rim and backboard collisions (Phase 4)
   if (checkRimCollision() || checkBackboardCollision()) {
     // Collision occurred, continue with updated velocity
   }
@@ -929,6 +1143,17 @@ function updateBasketballPhysics(deltaTime) {
     basketballPhysics.rotationSpeed.set(0, 0, 0);
     basketballPhysics.isFlying = false;
     basketball.position.y = basketballPhysics.groundY; // Ensure exact ground position
+    
+    // Phase 6: Register miss if shot was being tracked
+    if (basketballScoring.isTrackingShot) {
+      const shotDistance = basketballScoring.shotStartPosition ? 
+        Math.sqrt(
+          Math.pow(basketballScoring.shotStartPosition.x - basketball.position.x, 2) +
+          Math.pow(basketballScoring.shotStartPosition.z - basketball.position.z, 2)
+        ) : 0;
+      registerScore(false, 0, shotDistance);
+    }
+    
     return; // Exit early
   }
   
@@ -944,6 +1169,17 @@ function updateBasketballPhysics(deltaTime) {
     basketballPhysics.isFlying = false;
     basketball.position.y = basketballPhysics.groundY;
     basketballPhysics.startTime = null;
+    
+    // Phase 6: Register miss if shot was being tracked
+    if (basketballScoring.isTrackingShot) {
+      const shotDistance = basketballScoring.shotStartPosition ? 
+        Math.sqrt(
+          Math.pow(basketballScoring.shotStartPosition.x - basketball.position.x, 2) +
+          Math.pow(basketballScoring.shotStartPosition.z - basketball.position.z, 2)
+        ) : 0;
+      registerScore(false, 0, shotDistance);
+    }
+    
     return;
   }
   
@@ -1125,7 +1361,7 @@ function updateBasketballMovement() {
 }
 
 /**
- * Manually resets basketball to center court and stops all physics
+ * Manually resets basketball to center court and stops all physics (Phase 1 & 6)
  */
 function resetBasketball() {
   if (!basketball) return;
@@ -1137,6 +1373,28 @@ function resetBasketball() {
   basketballPhysics.startTime = null;
   basketballShot.power = 0;
   updatePowerIndicator();
+  
+  // Phase 6: Stop tracking any current shot
+  basketballScoring.isTrackingShot = false;
+}
+
+/**
+ * Resets all scoring statistics (Phase 6)
+ */
+function resetScoreSystem() {
+  basketballScoring.totalScore = 0;
+  basketballScoring.shotsAttempted = 0;
+  basketballScoring.shotsMade = 0;
+  basketballScoring.currentStreak = 0;
+  basketballScoring.bestStreak = 0;
+  basketballScoring.lastShotResult = null;
+  basketballScoring.lastShotDistance = 0;
+  basketballScoring.isTrackingShot = false;
+  basketballScoring.consecutiveMisses = 0;
+  updateScoreDisplay();
+  
+  // Show reset confirmation
+  showScorePopup('STATS RESET', 'miss');
 }
 
 /**
@@ -1158,6 +1416,9 @@ createBasketballHoop(15);
 createBasketball();
 createBleachers();
 createScoreboard();
+
+// Phase 6: Initialize score display
+updateScoreDisplay();
 
 // --- Camera Setup ---
 camera.position.set(0, 10, 20);
@@ -1339,6 +1600,13 @@ document.addEventListener('keydown', e => {
   if (e.key === 'r' || e.key === 'R') {
     if (!isFreeCamera) {
       resetBasketball();
+    }
+  }
+  
+  // Score system reset (T key) - Phase 6
+  if (e.key === 't' || e.key === 'T') {
+    if (!isFreeCamera) {
+      resetScoreSystem();
     }
   }
 });
