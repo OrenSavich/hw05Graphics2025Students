@@ -1258,15 +1258,12 @@ function updateScoreDisplay() {
       
       <!-- Performance Indicators -->
       <div style="border-top: 1px solid rgba(255,215,0,0.3); padding-top: 6px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9px;">
+        <div style="display: flex; justify-content: center; align-items: center; font-size: 9px;">
           <div style="color: #AAA;">
             Performance: 
             <span style="color: ${accuracy >= 70 ? '#4CAF50' : accuracy >= 50 ? '#FF9800' : accuracy >= 30 ? '#FFC107' : '#f44336'};">
               ${accuracy >= 70 ? 'EXCELLENT' : accuracy >= 50 ? 'GOOD' : accuracy >= 30 ? 'AVERAGE' : 'NEEDS PRACTICE'}
             </span>
-          </div>
-          <div style="color: #AAA;">
-            Press <strong style="color: #FFD700;">R</strong> to reset stats
           </div>
         </div>
       </div>
