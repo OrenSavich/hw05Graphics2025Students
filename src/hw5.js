@@ -495,6 +495,9 @@ function createBasketballHoop(hoopX) {
 // Basketball Creation
 // =======================
 
+// Global basketball reference for movement controls
+let basketball = null;
+
 /**
  * Creates a basketball with a custom texture.
  */
@@ -528,13 +531,13 @@ function createBasketball() {
 
   // Helper to add basketball mesh to scene
   function addBasketballMesh(geometry, material) {
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    basketball = new THREE.Mesh(geometry, material);
+    basketball.castShadow = true;
+    basketball.receiveShadow = true;
     // Raise the ball even higher above the court
-    mesh.position.set(0, 0.30, 0); // higher Y value for more clearance
-    mesh.rotation.y = Math.PI / 4;
-    scene.add(mesh);
+    basketball.position.set(0, 0.30, 0); // higher Y value for more clearance
+    basketball.rotation.y = Math.PI / 4;
+    scene.add(basketball);
   }
 }
 
@@ -616,6 +619,67 @@ function createScoreboard() {
 }
 
 // =======================
+// Basketball Movement System (HW6 Phase 1)
+// =======================
+
+// Basketball movement variables
+const basketballMovement = {
+  speed: 0.15,
+  keys: {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false
+  },
+  boundaries: {
+    minX: -14,   // Court width is 30, so -15 to 15, with some margin
+    maxX: 14,
+    minZ: -6.5,  // Court depth is 15, so -7.5 to 7.5, with some margin  
+    maxZ: 6.5
+  }
+};
+
+/**
+ * Checks if basketball is within court boundaries
+ */
+function isWithinBounds(x, z) {
+  return x >= basketballMovement.boundaries.minX && 
+         x <= basketballMovement.boundaries.maxX &&
+         z >= basketballMovement.boundaries.minZ && 
+         z <= basketballMovement.boundaries.maxZ;
+}
+
+/**
+ * Updates basketball position based on keyboard input
+ */
+function updateBasketballMovement() {
+  if (!basketball) return;
+
+  let deltaX = 0;
+  let deltaZ = 0;
+
+  // Calculate movement based on pressed keys
+  if (basketballMovement.keys.ArrowLeft) deltaX -= basketballMovement.speed;
+  if (basketballMovement.keys.ArrowRight) deltaX += basketballMovement.speed;
+  if (basketballMovement.keys.ArrowUp) deltaZ -= basketballMovement.speed;
+  if (basketballMovement.keys.ArrowDown) deltaZ += basketballMovement.speed;
+
+  // Apply movement if within boundaries
+  if (deltaX !== 0 || deltaZ !== 0) {
+    const newX = basketball.position.x + deltaX;
+    const newZ = basketball.position.z + deltaZ;
+
+    // Check boundaries and apply movement
+    if (isWithinBounds(newX, basketball.position.z)) {
+      basketball.position.x = newX;
+    }
+    if (isWithinBounds(basketball.position.x, newZ)) {
+      basketball.position.z = newZ;
+    }
+  }
+}
+
+// =======================
 // Scene Initialization
 // =======================
 
@@ -627,7 +691,7 @@ createBleachers();
 createScoreboard();
 
 // --- Camera Setup ---
-camera.position.set(0, 15, 30);
+camera.position.set(0, 10, 20);
 
 // --- Orbit Controls ---
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -669,14 +733,28 @@ document.addEventListener('keydown', e => {
     isFreeCamera = !isFreeCamera;
     if (isFreeCamera) enableFreeCamera(); else disableFreeCamera();
   }
+  
+  // Free camera controls (only when in free camera mode)
   if (isFreeCamera) {
     if (e.key in freeCamKeys) freeCamKeys[e.key] = true;
     if (e.key in arrowKeys) arrowKeys[e.key] = true;
   }
+  
+  // Basketball movement controls (only when NOT in free camera mode)
+  if (!isFreeCamera && e.key in basketballMovement.keys) {
+    basketballMovement.keys[e.key] = true;
+  }
 });
+
 document.addEventListener('keyup', e => {
+  // Free camera controls
   if (isFreeCamera && (e.key in freeCamKeys)) freeCamKeys[e.key] = false;
   if (isFreeCamera && (e.key in arrowKeys)) arrowKeys[e.key] = false;
+  
+  // Basketball movement controls
+  if (e.key in basketballMovement.keys) {
+    basketballMovement.keys[e.key] = false;
+  }
 });
 document.addEventListener('mousemove', e => {
   // Only allow mouse look if not in free camera mode
@@ -697,6 +775,10 @@ document.addEventListener('mouseleave', () => { lastMouse = null; });
 // --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
+  
+  // Update basketball movement (HW6 Phase 1)
+  updateBasketballMovement();
+  
   if (isFreeCamera) {
     // WASDQE movement
     freeCamDirection.set(0,0,0);
