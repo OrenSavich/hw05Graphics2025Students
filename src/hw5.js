@@ -651,6 +651,157 @@ const basketballShot = {
   }
 };
 
+// Basketball physics system (HW6 Phase 3)
+const basketballPhysics = {
+  isFlying: false,
+  velocity: new THREE.Vector3(0, 0, 0),
+  gravity: -9.81 * 2, // Accelerated gravity for game feel
+  groundY: 0.30, // Ball rest height on court
+  bounceDecay: 0.6, // Energy loss on bounce
+  minBounceVelocity: 0.5, // Minimum velocity to continue bouncing
+  airResistance: 0.98, // Air resistance factor
+  rotationSpeed: new THREE.Vector3(0, 0, 0)
+};
+
+// Hoop positions for shot targeting
+const hoopPositions = [
+  { x: -14, y: 4.5, z: 0 }, // Left hoop
+  { x: 14, y: 4.5, z: 0 }   // Right hoop
+];
+
+/**
+ * Finds the nearest hoop to the basketball
+ */
+function getNearestHoop() {
+  if (!basketball) return hoopPositions[0];
+  
+  const ballPos = basketball.position;
+  let nearestHoop = hoopPositions[0];
+  let minDistance = ballPos.distanceTo(new THREE.Vector3(nearestHoop.x, nearestHoop.y, nearestHoop.z));
+  
+  for (let i = 1; i < hoopPositions.length; i++) {
+    const hoop = hoopPositions[i];
+    const distance = ballPos.distanceTo(new THREE.Vector3(hoop.x, hoop.y, hoop.z));
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestHoop = hoop;
+    }
+  }
+  
+  return nearestHoop;
+}
+
+/**
+ * Calculates the initial velocity needed to reach the target hoop
+ */
+function calculateShotVelocity(startPos, targetPos, power) {
+  const powerFactor = (power / 100) * 1.0 + 0.4; // Scale power from 0.4 to 1.4 (more balanced)
+  const dx = targetPos.x - startPos.x;
+  const dy = targetPos.y - startPos.y;
+  const dz = targetPos.z - startPos.z;
+  const distance = Math.sqrt(dx * dx + dz * dz);
+  
+  // Calculate optimal angle (45 degrees adjusted for distance)
+  const optimalAngle = Math.PI / 4 + (distance / 30) * (Math.PI / 6); // Adjust angle based on distance
+  
+  // Calculate initial speed needed to reach target (balanced multiplier)
+  const speed = Math.sqrt(Math.abs(basketballPhysics.gravity) * distance / Math.sin(2 * optimalAngle)) * powerFactor * 1.3;
+  
+  // Convert to velocity components
+  const horizontalSpeed = speed * Math.cos(optimalAngle);
+  const verticalSpeed = speed * Math.sin(optimalAngle);
+  
+  // Normalize horizontal direction
+  const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+  const vx = horizontalDistance > 0 ? (dx / horizontalDistance) * horizontalSpeed : 0;
+  const vz = horizontalDistance > 0 ? (dz / horizontalDistance) * horizontalSpeed : 0;
+  
+  return new THREE.Vector3(vx, verticalSpeed, vz);
+}
+
+/**
+ * Shoots the basketball toward the nearest hoop
+ */
+function shootBasketball() {
+  if (!basketball || basketballPhysics.isFlying) return;
+  
+  const nearestHoop = getNearestHoop();
+  const targetPos = new THREE.Vector3(nearestHoop.x, nearestHoop.y, nearestHoop.z);
+  const startPos = basketball.position.clone();
+  
+  // Calculate initial velocity based on power and target
+  basketballPhysics.velocity = calculateShotVelocity(startPos, targetPos, basketballShot.power);
+  
+  // Add some rotation for visual effect
+  basketballPhysics.rotationSpeed.set(
+    (Math.random() - 0.5) * 0.2,
+    (Math.random() - 0.5) * 0.1,
+    basketballPhysics.velocity.x * 0.1
+  );
+  
+  basketballPhysics.isFlying = true;
+}
+
+/**
+ * Updates basketball physics during flight
+ */
+function updateBasketballPhysics(deltaTime) {
+  if (!basketball || !basketballPhysics.isFlying) return;
+  
+  // Apply gravity
+  basketballPhysics.velocity.y += basketballPhysics.gravity * deltaTime;
+  
+  // Apply air resistance
+  basketballPhysics.velocity.multiplyScalar(basketballPhysics.airResistance);
+  
+  // Update position
+  const deltaPos = basketballPhysics.velocity.clone().multiplyScalar(deltaTime);
+  basketball.position.add(deltaPos);
+  
+  // Apply rotation
+  basketball.rotation.x += basketballPhysics.rotationSpeed.x;
+  basketball.rotation.y += basketballPhysics.rotationSpeed.y;
+  basketball.rotation.z += basketballPhysics.rotationSpeed.z;
+  
+  // Check for ground collision
+  if (basketball.position.y <= basketballPhysics.groundY) {
+    basketball.position.y = basketballPhysics.groundY;
+    
+    // Bounce if velocity is high enough
+    if (Math.abs(basketballPhysics.velocity.y) > basketballPhysics.minBounceVelocity) {
+      basketballPhysics.velocity.y = -basketballPhysics.velocity.y * basketballPhysics.bounceDecay;
+      basketballPhysics.velocity.x *= basketballPhysics.bounceDecay;
+      basketballPhysics.velocity.z *= basketballPhysics.bounceDecay;
+      
+      // Reduce rotation on bounce
+      basketballPhysics.rotationSpeed.multiplyScalar(0.7);
+    } else {
+      // Stop bouncing
+      basketballPhysics.velocity.set(0, 0, 0);
+      basketballPhysics.rotationSpeed.set(0, 0, 0);
+      basketballPhysics.isFlying = false;
+    }
+  }
+  
+  // Check boundaries (keep ball on court during flight)
+  if (basketball.position.x < -15) {
+    basketball.position.x = -15;
+    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * 0.5;
+  }
+  if (basketball.position.x > 15) {
+    basketball.position.x = 15;
+    basketballPhysics.velocity.x = -basketballPhysics.velocity.x * 0.5;
+  }
+  if (basketball.position.z < -7.5) {
+    basketball.position.z = -7.5;
+    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * 0.5;
+  }
+  if (basketball.position.z > 7.5) {
+    basketball.position.z = 7.5;
+    basketballPhysics.velocity.z = -basketballPhysics.velocity.z * 0.5;
+  }
+}
+
 /**
  * Updates shot power based on W/S key input
  */
@@ -708,7 +859,7 @@ function isWithinBounds(x, z) {
  * Updates basketball position based on keyboard input
  */
 function updateBasketballMovement() {
-  if (!basketball) return;
+  if (!basketball || basketballPhysics.isFlying) return; // Don't move if ball is flying
 
   let deltaX = 0;
   let deltaZ = 0;
@@ -735,11 +886,12 @@ function updateBasketballMovement() {
 }
 
 /**
- * Updates both basketball movement and shot power
+ * Updates both basketball movement, shot power, and physics
  */
-function updateBasketballSystem() {
+function updateBasketballSystem(deltaTime = 0.016) {
   updateBasketballMovement();
   updateShotPower();
+  updateBasketballPhysics(deltaTime);
 }
 
 // =======================
@@ -910,33 +1062,41 @@ document.addEventListener('keydown', e => {
   if (isFreeCamera) {
     if (e.key in freeCamKeys) freeCamKeys[e.key] = true;
     if (e.key in arrowKeys) arrowKeys[e.key] = true;
-  }
-  
-  // Basketball movement controls (only when NOT in free camera mode)
-  if (!isFreeCamera && e.key in basketballMovement.keys) {
-    basketballMovement.keys[e.key] = true;
-  }
-  
-  // Basketball shot power controls (only when NOT in free camera mode)
-  if (!isFreeCamera) {
+  } else {
+    // Basketball movement controls (only when NOT in free camera mode)
+    if (e.key in basketballMovement.keys) {
+      basketballMovement.keys[e.key] = true;
+    }
+    
+    // Basketball shot power controls (only when NOT in free camera mode)
     if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = true;
     if (e.key === 's' || e.key === 'S') basketballShot.keys.s = true;
+  }
+  
+  // Basketball shooting (spacebar)
+  if (e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault(); // Prevent page scroll
+    if (!isFreeCamera) {
+      shootBasketball();
+    }
   }
 });
 
 document.addEventListener('keyup', e => {
   // Free camera controls
-  if (isFreeCamera && (e.key in freeCamKeys)) freeCamKeys[e.key] = false;
-  if (isFreeCamera && (e.key in arrowKeys)) arrowKeys[e.key] = false;
-  
-  // Basketball movement controls
-  if (e.key in basketballMovement.keys) {
-    basketballMovement.keys[e.key] = false;
+  if (isFreeCamera) {
+    if (e.key in freeCamKeys) freeCamKeys[e.key] = false;
+    if (e.key in arrowKeys) arrowKeys[e.key] = false;
+  } else {
+    // Basketball movement controls
+    if (e.key in basketballMovement.keys) {
+      basketballMovement.keys[e.key] = false;
+    }
+    
+    // Basketball shot power controls
+    if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = false;
+    if (e.key === 's' || e.key === 'S') basketballShot.keys.s = false;
   }
-  
-  // Basketball shot power controls
-  if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = false;
-  if (e.key === 's' || e.key === 'S') basketballShot.keys.s = false;
 });
 document.addEventListener('mousemove', e => {
   // Only allow mouse look if not in free camera mode
@@ -958,8 +1118,13 @@ document.addEventListener('mouseleave', () => { lastMouse = null; });
 function animate() {
   requestAnimationFrame(animate);
   
-  // Update basketball system (movement + shot power)
-  updateBasketballSystem();
+  // Calculate delta time for physics
+  const currentTime = performance.now() * 0.001; // Convert to seconds
+  const deltaTime = Math.min(currentTime - (animate.lastTime || currentTime), 0.033); // Cap at ~30fps
+  animate.lastTime = currentTime;
+  
+  // Update basketball system (movement + shot power + physics)
+  updateBasketballSystem(deltaTime);
   
   if (isFreeCamera) {
     // WASDQE movement
