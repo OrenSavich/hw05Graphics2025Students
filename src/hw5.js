@@ -639,6 +639,61 @@ const basketballMovement = {
   }
 };
 
+// Basketball shot power system (HW6 Phase 2)
+const basketballShot = {
+  power: 0, // Power level 0-100%
+  maxPower: 100,
+  minPower: 0,
+  powerIncrement: 2, // How fast power increases/decreases
+  keys: {
+    w: false, // Increase power
+    s: false  // Decrease power
+  }
+};
+
+/**
+ * Updates shot power based on W/S key input
+ */
+function updateShotPower() {
+  let powerChange = 0;
+  
+  if (basketballShot.keys.w) powerChange += basketballShot.powerIncrement;
+  if (basketballShot.keys.s) powerChange -= basketballShot.powerIncrement;
+  
+  if (powerChange !== 0) {
+    basketballShot.power += powerChange;
+    // Clamp power within limits
+    basketballShot.power = Math.max(basketballShot.minPower, 
+                                   Math.min(basketballShot.maxPower, basketballShot.power));
+    
+    // Update power indicator in UI
+    updatePowerIndicator();
+  }
+}
+
+/**
+ * Updates the visual power indicator in the UI
+ */
+function updatePowerIndicator() {
+  const powerFill = document.getElementById('power-fill');
+  const powerText = document.getElementById('power-text');
+  
+  if (powerFill && powerText) {
+    const powerPercentage = (basketballShot.power / basketballShot.maxPower) * 100;
+    powerFill.style.width = powerPercentage + '%';
+    powerText.textContent = Math.round(basketballShot.power) + '%';
+    
+    // Color coding: green (low) -> yellow (medium) -> red (high)
+    if (powerPercentage < 33) {
+      powerFill.style.backgroundColor = '#00ff00'; // Green
+    } else if (powerPercentage < 66) {
+      powerFill.style.backgroundColor = '#ffff00'; // Yellow
+    } else {
+      powerFill.style.backgroundColor = '#ff6600'; // Orange/Red
+    }
+  }
+}
+
 /**
  * Checks if basketball is within court boundaries
  */
@@ -677,6 +732,14 @@ function updateBasketballMovement() {
       basketball.position.z = newZ;
     }
   }
+}
+
+/**
+ * Updates both basketball movement and shot power
+ */
+function updateBasketballSystem() {
+  updateBasketballMovement();
+  updateShotPower();
 }
 
 // =======================
@@ -853,6 +916,12 @@ document.addEventListener('keydown', e => {
   if (!isFreeCamera && e.key in basketballMovement.keys) {
     basketballMovement.keys[e.key] = true;
   }
+  
+  // Basketball shot power controls (only when NOT in free camera mode)
+  if (!isFreeCamera) {
+    if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = true;
+    if (e.key === 's' || e.key === 'S') basketballShot.keys.s = true;
+  }
 });
 
 document.addEventListener('keyup', e => {
@@ -864,6 +933,10 @@ document.addEventListener('keyup', e => {
   if (e.key in basketballMovement.keys) {
     basketballMovement.keys[e.key] = false;
   }
+  
+  // Basketball shot power controls
+  if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = false;
+  if (e.key === 's' || e.key === 'S') basketballShot.keys.s = false;
 });
 document.addEventListener('mousemove', e => {
   // Only allow mouse look if not in free camera mode
@@ -885,8 +958,8 @@ document.addEventListener('mouseleave', () => { lastMouse = null; });
 function animate() {
   requestAnimationFrame(animate);
   
-  // Update basketball movement (HW6 Phase 1)
-  updateBasketballMovement();
+  // Update basketball system (movement + shot power)
+  updateBasketballSystem();
   
   if (isFreeCamera) {
     // WASDQE movement

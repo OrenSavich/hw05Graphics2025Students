@@ -120,6 +120,61 @@
         }
         .control-disabled .control-description { color: #666; }
         
+        /* Shot Power Indicator */
+        #power-indicator {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(255, 165, 0, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 300px;
+            z-index: 100;
+            color: white;
+            font-size: 12px;
+        }
+        #power-indicator h4 {
+            margin: 0 0 8px 0;
+            color: #ff6600;
+            font-size: 14px;
+            text-align: center;
+        }
+        .power-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(50, 50, 50, 0.8);
+            border: 1px solid #666;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .power-fill {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.1s ease, background-color 0.2s ease;
+            border-radius: 10px;
+        }
+        .power-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 11px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            z-index: 1;
+        }
+        .power-controls {
+            margin-top: 8px;
+            text-align: center;
+            font-size: 10px;
+            color: #ccc;
+        }
+        
         /* Close button for controls */
         .close-button {
             position: absolute;
@@ -260,21 +315,21 @@
             </div>
         </div>
         <!-- Basketball Actions Section (HW6) -->
-        <div class="control-section control-disabled">
+        <div class="control-section">
             <div class="control-section-title">Basketball Actions</div>
             <div class="control-group">
                 <span class="control-key">W</span>
-                <span class="control-description">Dribble faster</span>
+                <span class="control-description">Increase shot power</span>
             </div>
             <div class="control-group">
                 <span class="control-key">S</span>
-                <span class="control-description">Dribble slower</span>
+                <span class="control-description">Decrease shot power</span>
             </div>
-            <div class="control-group">
+            <div class="control-group control-disabled">
                 <span class="control-key">Space</span>
                 <span class="control-description">Shoot basketball</span>
             </div>
-            <div class="control-group">
+            <div class="control-group control-disabled">
                 <span class="control-key">R</span>
                 <span class="control-description">Reset ball position</span>
             </div>
@@ -296,6 +351,18 @@
     <button id="reopen-controls" class="ui-overlay">
         🎮 Show Controls
     </button>
+
+    <!-- Shot Power Indicator -->
+    <div id="power-indicator" class="ui-overlay">
+        <h4>🏀 Shot Power</h4>
+        <div class="power-bar">
+            <div id="power-fill" class="power-fill"></div>
+            <div id="power-text" class="power-text">0%</div>
+        </div>
+        <div class="power-controls">
+            <strong>W</strong> to increase • <strong>S</strong> to decrease
+        </div>
+    </div>
 
     <!-- ========================= -->
     <!-- App JavaScript            -->
