@@ -651,7 +651,7 @@ const basketballShot = {
   }
 };
 
-// Basketball physics system (HW6 Phase 3 & 4)
+// Basketball physics system (HW6 Phase 3, 4 & 5)
 const basketballPhysics = {
   isFlying: false,
   velocity: new THREE.Vector3(0, 0, 0),
@@ -664,7 +664,10 @@ const basketballPhysics = {
   airResistance: 0.99, // Air resistance factor (reduced drag)
   rotationSpeed: new THREE.Vector3(0, 0, 0),
   ballRadius: 0.2, // Basketball radius for collision detection
-  startTime: null // Track when physics started for timeout prevention
+  startTime: null, // Track when physics started for timeout prevention
+  // Phase 5: Rotation animation settings
+  rotationScaleFactor: 8, // How much rotation per unit of velocity (reduced for realism)
+  rotationDecay: 0.95 // How quickly rotation slows down when not moving
 };
 
 // Hoop positions for shot targeting and collision detection (HW6 Phase 4)
@@ -739,8 +742,13 @@ function checkRimCollision() {
           (Math.random() - 0.5) * 2
         ));
         
-        // Update rotation
+        // Phase 5: Update rotation based on new velocity after rim bounce
         basketballPhysics.rotationSpeed.multiplyScalar(0.8);
+        basketballPhysics.rotationSpeed.add(new THREE.Vector3(
+          (Math.random() - 0.5) * 0.3,
+          (Math.random() - 0.5) * 0.2,
+          (Math.random() - 0.5) * 0.3
+        ));
         
         return true;
       }
@@ -782,8 +790,10 @@ function checkBackboardCollision() {
           ballPos.x = backboardCenter.x - basketballPhysics.ballRadius - 0.01;
         }
         
-        // Update rotation
-        basketballPhysics.rotationSpeed.multiplyScalar(0.9);
+        // Phase 5: Realistic rotation after backboard collision
+        basketballPhysics.rotationSpeed.x *= 0.9; // Preserve most X rotation
+        basketballPhysics.rotationSpeed.y *= 0.7; // Reduce Y rotation
+        basketballPhysics.rotationSpeed.z = -basketballPhysics.rotationSpeed.z * 0.8; // Reverse and reduce Z rotation
         
         return true;
       }
@@ -799,7 +809,6 @@ function checkBackboardCollision() {
 function calculateShotVelocity(startPos, targetPos, power) {
   const powerFactor = (power / 100) * 1.0 + 0.4; // Scale power from 0.4 to 1.4 (more balanced)
   const dx = targetPos.x - startPos.x;
-  const dy = targetPos.y - startPos.y;
   const dz = targetPos.z - startPos.z;
   const distance = Math.sqrt(dx * dx + dz * dz);
   
@@ -822,7 +831,7 @@ function calculateShotVelocity(startPos, targetPos, power) {
 }
 
 /**
- * Shoots the basketball toward the nearest hoop
+ * Shoots the basketball toward the nearest hoop (Phase 3 & 5)
  */
 function shootBasketball() {
   if (!basketball || basketballPhysics.isFlying) return;
@@ -834,11 +843,17 @@ function shootBasketball() {
   // Calculate initial velocity based on power and target
   basketballPhysics.velocity = calculateShotVelocity(startPos, targetPos, basketballShot.power);
   
-  // Add some rotation for visual effect
+  // Phase 5: Enhanced rotation based on shot direction and power
+  const shotDirection = targetPos.clone().sub(startPos).normalize();
+  const powerFactor = (basketballShot.power / 100) * 0.5 + 0.3; // Scale rotation with power
+  
   basketballPhysics.rotationSpeed.set(
-    (Math.random() - 0.5) * 0.2,
-    (Math.random() - 0.5) * 0.1,
-    basketballPhysics.velocity.x * 0.1
+    // X rotation based on shot arc (higher power = more backspin)
+    -powerFactor * 0.8,
+    // Y rotation for slight side spin based on direction
+    shotDirection.x * powerFactor * 0.3,
+    // Z rotation based on horizontal shot direction
+    shotDirection.z * powerFactor * 0.4
   );
   
   // Initialize physics state properly
@@ -847,7 +862,7 @@ function shootBasketball() {
 }
 
 /**
- * Updates basketball physics during flight (Phase 3 & 4)
+ * Updates basketball physics during flight (Phase 3, 4 & 5)
  */
 function updateBasketballPhysics(deltaTime) {
   if (!basketball || !basketballPhysics.isFlying) return;
@@ -863,14 +878,17 @@ function updateBasketballPhysics(deltaTime) {
   // Apply air resistance
   basketballPhysics.velocity.multiplyScalar(basketballPhysics.airResistance);
   
+  // Phase 5: Update rotation based on flight velocity
+  updateFlightRotation();
+  
   // Update position
   const deltaPos = basketballPhysics.velocity.clone().multiplyScalar(deltaTime);
   basketball.position.add(deltaPos);
   
-  // Apply rotation
-  basketball.rotation.x += basketballPhysics.rotationSpeed.x;
-  basketball.rotation.y += basketballPhysics.rotationSpeed.y;
-  basketball.rotation.z += basketballPhysics.rotationSpeed.z;
+  // Apply rotation (Phase 5: Enhanced rotation during flight)
+  basketball.rotation.x += basketballPhysics.rotationSpeed.x * deltaTime;
+  basketball.rotation.y += basketballPhysics.rotationSpeed.y * deltaTime;
+  basketball.rotation.z += basketballPhysics.rotationSpeed.z * deltaTime;
   
   // Ground collision detection (Phase 4 - improved)
   if (basketball.position.y <= basketballPhysics.groundY) {
@@ -882,10 +900,12 @@ function updateBasketballPhysics(deltaTime) {
       basketballPhysics.velocity.x *= basketballPhysics.bounceDecay;
       basketballPhysics.velocity.z *= basketballPhysics.bounceDecay;
       
-      // Reduce rotation on bounce
-      basketballPhysics.rotationSpeed.multiplyScalar(0.8);
+      // Phase 5: Realistic ground bounce rotation
+      basketballPhysics.rotationSpeed.x *= 0.8; // Reduce forward spin
+      basketballPhysics.rotationSpeed.y *= 0.9; // Preserve most side spin  
+      basketballPhysics.rotationSpeed.z *= 0.8; // Reduce lateral spin
     } else {
-      // Stop bouncing
+      // Stop bouncing - Phase 5: Stop all rotation too
       basketballPhysics.velocity.set(0, 0, 0);
       basketballPhysics.rotationSpeed.set(0, 0, 0);
       basketballPhysics.isFlying = false;
@@ -1002,7 +1022,64 @@ function isWithinBounds(x, z) {
 }
 
 /**
- * Updates basketball position based on keyboard input
+ * Calculates rotation speed based on movement direction and velocity (Phase 5)
+ */
+function calculateRotationFromMovement(deltaX, deltaZ) {
+  if (!basketball || (deltaX === 0 && deltaZ === 0)) return;
+  
+  // Calculate rotation axis perpendicular to movement direction
+  // For ground movement: rotation around axis perpendicular to movement
+  const rotationX = deltaZ * basketballPhysics.rotationScaleFactor; // Forward/backward movement rotates around X
+  const rotationZ = -deltaX * basketballPhysics.rotationScaleFactor; // Left/right movement rotates around Z
+  
+  // Apply rotation with realistic physics
+  basketballPhysics.rotationSpeed.x = rotationX;
+  basketballPhysics.rotationSpeed.z = rotationZ;
+  basketballPhysics.rotationSpeed.y *= 0.98; // Slight decay on Y rotation
+}
+
+/**
+ * Updates ball rotation during flight based on velocity (Phase 5)
+ */
+function updateFlightRotation() {
+  if (!basketball || !basketballPhysics.isFlying) return;
+  
+  const velocity = basketballPhysics.velocity;
+  const speed = velocity.length();
+  
+  if (speed > 0.1) {
+    // Calculate rotation based on flight velocity
+    const rotationFactor = basketballPhysics.rotationScaleFactor * 0.3; // Reduced for flight
+    
+    // X rotation from forward/backward movement
+    basketballPhysics.rotationSpeed.x = velocity.z * rotationFactor;
+    
+    // Z rotation from left/right movement  
+    basketballPhysics.rotationSpeed.z = -velocity.x * rotationFactor;
+    
+    // Y rotation based on overall horizontal movement for spin effect
+    const horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    basketballPhysics.rotationSpeed.y = horizontalSpeed * rotationFactor * 0.5;
+  }
+}
+
+/**
+ * Applies rotation decay when ball is not moving (Phase 5)
+ */
+function applyRotationDecay() {
+  if (!basketball || basketballPhysics.isFlying) return;
+  
+  // Gradually slow down rotation when not moving
+  basketballPhysics.rotationSpeed.multiplyScalar(basketballPhysics.rotationDecay);
+  
+  // Stop very small rotations to prevent endless spinning
+  if (basketballPhysics.rotationSpeed.length() < 0.01) {
+    basketballPhysics.rotationSpeed.set(0, 0, 0);
+  }
+}
+
+/**
+ * Updates basketball position based on keyboard input (Phase 1 & 5)
  */
 function updateBasketballMovement() {
   if (!basketball || basketballPhysics.isFlying) return; // Don't move if ball is flying
@@ -1022,13 +1099,29 @@ function updateBasketballMovement() {
     const newZ = basketball.position.z + deltaZ;
 
     // Check boundaries and apply movement
+    let actualDeltaX = 0;
+    let actualDeltaZ = 0;
+    
     if (isWithinBounds(newX, basketball.position.z)) {
       basketball.position.x = newX;
+      actualDeltaX = deltaX;
     }
     if (isWithinBounds(basketball.position.x, newZ)) {
       basketball.position.z = newZ;
+      actualDeltaZ = deltaZ;
     }
+    
+    // Phase 5: Calculate rotation based on actual movement
+    calculateRotationFromMovement(actualDeltaX, actualDeltaZ);
+  } else {
+    // Phase 5: Apply rotation decay when not moving
+    applyRotationDecay();
   }
+  
+  // Phase 5: Apply rotation to the basketball
+  basketball.rotation.x += basketballPhysics.rotationSpeed.x;
+  basketball.rotation.y += basketballPhysics.rotationSpeed.y;
+  basketball.rotation.z += basketballPhysics.rotationSpeed.z;
 }
 
 /**
