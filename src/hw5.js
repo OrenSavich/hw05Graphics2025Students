@@ -2110,8 +2110,8 @@ document.addEventListener('keydown', e => {
     }
     
     // Basketball shot power controls (only when NOT in free camera mode)
-    if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = true;
-    if (e.key === 's' || e.key === 'S') basketballShot.keys.s = true;
+    if (e.code === 'KeyW') basketballShot.keys.w = true; // Physical W key regardless of language
+    if (e.code === 'KeyS') basketballShot.keys.s = true; // Physical S key regardless of language
   }
   
   // Basketball shooting (spacebar)
@@ -2149,8 +2149,8 @@ document.addEventListener('keyup', e => {
     }
     
     // Basketball shot power controls
-    if (e.key === 'w' || e.key === 'W') basketballShot.keys.w = false;
-    if (e.key === 's' || e.key === 'S') basketballShot.keys.s = false;
+    if (e.code === 'KeyW') basketballShot.keys.w = false; // Physical W key regardless of language
+    if (e.code === 'KeyS') basketballShot.keys.s = false; // Physical S key regardless of language
   }
 });
 document.addEventListener('mousemove', e => {
