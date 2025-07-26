@@ -90,11 +90,11 @@ All detailed instructions, requirements, and specifications can be found in:
 
 ### Gameplay Video Demonstration
 
-[![Basketball Court Gameplay Video](screenshots/View%20showing%20the%20basketball%20positioned%20at%20center%20court.png)](screenshots/‪Basketball%20Court%20-%20HW5%20-%20Google%20Chrome‬%202025-07-25%2016-58-19.mp4)
 
-_Click the image above to view the gameplay demonstration video_
 
-**Direct video link:** [Basketball Court Gameplay Video](screenshots/‪Basketball%20Court%20-%20HW5%20-%20Google%20Chrome‬%202025-07-25%2016-58-19.mp4)
+https://github.com/user-attachments/assets/1a42f40d-5d74-4364-bd9b-58fc941eb10f
+
+
 
 ---
 
