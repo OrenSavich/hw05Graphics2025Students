@@ -17,6 +17,74 @@
    ```
 4. Open your browser and go to [http://localhost:8000](http://localhost:8000)
 
+## Complete List of Implemented Controls
+
+### Basketball Game Controls
+
+- **Arrow Keys**: Move basketball horizontally (left/right) and forward/backward on court
+- **W/S Keys**: Adjust shot power (0-100%) with visual indicator
+- **Spacebar**: Shoot basketball toward nearest hoop
+- **R Key**: Reset basketball to center court and reset camera position
+- **T Key**: Reset all scoring statistics
+
+### Camera Controls
+
+- **O Key**: Toggle orbit camera controls
+- **H Key**: Toggle HUD visibility
+- **F Key**: Toggle free camera mode
+
+### Free Camera Mode Controls
+
+- **WASD**: Movement in free camera mode
+- **QE**: Up/down movement in free camera mode
+- **Arrow Keys**: Camera rotation in free camera mode
+
+## Description of Physics System Implementation
+
+### Core Physics Engine
+
+Our basketball simulation implements a comprehensive physics system with realistic basketball mechanics:
+
+**Gravity Simulation**:
+
+- Constant downward acceleration (-9.81 \* 1.2 m/s²)
+- Realistic parabolic trajectory for basketball shots
+- Time-based physics calculations for smooth 60fps performance
+
+**Collision Detection System**:
+
+- **Ground Collision**: Ball bounces with energy loss (decay factor: 0.7)
+- **Rim Collision**: Sophisticated collision detection with minimal energy loss (0.05 decay)
+- **Backboard Collision**: Realistic bounce mechanics with moderate energy loss (0.4 decay)
+- **Boundary Collision**: Court edge detection with controlled bouncing
+
+**Advanced Physics Features**:
+
+- **Air Resistance**: Realistic drag simulation (0.99 resistance factor)
+- **Trajectory-Based Scoring**: Ball must pass through rim from above with proper downward velocity
+- **Anti-Cheat Protection**: Prevents scoring from touching net bottom or unrealistic angles
+- **Stuck Ball Detection**: Time-based position sampling prevents infinite physics loops
+
+**Rotation Animation System**:
+
+- **Movement-Based Rotation**: Ball rotates based on ground movement direction
+- **Flight Rotation**: Dynamic rotation during basketball flight based on velocity
+- **Rotation Decay**: Gradual slowdown when ball stops moving
+- **Realistic Physics**: Rotation axis matches movement direction with proper scaling
+
+**Shot Mechanics**:
+
+- **Power-Based Velocity**: Shot strength affects initial velocity (0-100% power range)
+- **Automatic Targeting**: Calculates optimal trajectory to nearest hoop
+- **Arc Calculation**: Ensures proper basketball arc height for realistic shots
+- **Distance-Based Scoring**: 2-point shots (inside 3-point line) vs 3-point shots
+
+### Performance Optimizations
+
+- **Time-Based Physics**: Prevents frame rate dependency
+- **Collision Optimization**: Efficient detection algorithms
+- **State Management**: Proper physics state cleanup and reset mechanisms
+
 ## Additional Features
 
 - **Modern, interactive 3D basketball court** using Three.js
@@ -90,11 +158,7 @@ All detailed instructions, requirements, and specifications can be found in:
 
 ### Gameplay Video Demonstration
 
-
-
 https://github.com/user-attachments/assets/1a42f40d-5d74-4364-bd9b-58fc941eb10f
-
-
 
 ---
 
